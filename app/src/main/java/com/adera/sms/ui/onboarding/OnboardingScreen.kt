@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.unit.sp
 import com.adera.sms.data.AppDatabase
 import com.adera.sms.ui.theme.*
@@ -57,6 +58,7 @@ private val pages = listOf(
     )
 )
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun OnboardingScreen(onOnboardingComplete: () -> Unit) {
     val context   = LocalContext.current
