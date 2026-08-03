@@ -2,25 +2,16 @@
 <!--
     Material 3 theme — Adera SMS
     Dark-mode-first (budget phones in Ethiopia commonly run in dark mode to save battery).
-    The Compose MaterialTheme is configured in code (AderaSmsTheme.kt — Step 5).
+    The Compose MaterialTheme is configured in code (AderaSmsTheme.kt).
     This XML theme is applied to the Activity window/status bar via AndroidManifest.
 -->
 <resources>
-    <style name="Theme.AderaSms" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Theme.AderaSms" parent="android:Theme.DeviceDefault.NoActionBar">
         <!-- Window chrome colors -->
         <item name="android:statusBarColor">@color/brand_green_900</item>
         <item name="android:navigationBarColor">@color/brand_green_bg_dark</item>
         <item name="android:windowBackground">@color/brand_green_bg_dark</item>
-
-        <!-- Material color tokens (also set in Compose code for full control) -->
-        <item name="colorPrimary">@color/brand_green_800</item>
-        <item name="colorPrimaryVariant">@color/brand_green_900</item>
-        <item name="colorSecondary">@color/brand_gold_primary</item>
-        <item name="colorError">@color/brand_ember</item>
-        <item name="colorSurface">@color/brand_green_surface</item>
         <item name="android:colorBackground">@color/brand_green_bg_dark</item>
-        <item name="colorOnPrimary">@color/white</item>
-        <item name="colorOnSurface">@color/on_dark_primary</item>
     </style>
 
     <!-- Splash screen theme (avoids a white flash on launch) -->

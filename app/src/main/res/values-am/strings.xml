@@ -1,6 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!--
-    Amharic string resources — values-am/strings.xml
+    Amharic string resources â€” values-am/strings.xml
     Loaded automatically when device language is set to Amharic (am).
 
     NOTE: All Amharic text below should be reviewed by a native Amharic speaker
@@ -10,49 +10,36 @@
     Spec 12.8: "UI and message templates: English + Amharic only. No other languages in v1."
 -->
 <resources>
-    <string name="app_name">አዴራ SMS</string>
+    <string name="app_name">áŠ á‹´áˆ« SMS</string>
 
     <!-- Notification -->
-    <string name="notification_channel_service_name">አዴራ SMS አገልግሎት</string>
-    <string name="notification_channel_service_description">አዴራ SMS ወደ ጥሪ ምላሽ ጥበቃ ስለሚሰጥ ዝቅተኛ ቅድሚያ ማሳወቂያ።</string>
+    <string name="notification_channel_service_name">áŠ á‹´áˆ« SMS áŠ áŒˆáˆáŒáˆŽá‰µ</string>
+    <string name="notification_channel_service_description">áŠ á‹´áˆ« SMS á‹ˆá‹° áŒ¥áˆª áˆáˆ‹áˆ½ áŒ¥á‰ á‰ƒ áˆµáˆˆáˆšáˆ°áŒ¥ á‹á‰…á‰°áŠ› á‰…á‹µáˆšá‹« áˆ›áˆ³á‹ˆá‰‚á‹«á¢</string>
     <!-- "Adera SMS is active" -->
-    <string name="notification_service_title">አዴራ SMS ንቁ ነው</string>
-    <!-- "Auto-reply protection enabled — you're covered" -->
-    <string name="notification_service_text">ራሱን-የቻለ-ምላሽ ጥበቃ ተሰጥቷል — ተጠብቀዋል</string>
+    <string name="notification_service_title">áŠ á‹´áˆ« SMS áŠ•á‰ áŠá‹</string>
+    <!-- "Auto-reply protection enabled â€” you're covered" -->
+    <string name="notification_service_text">áˆ«áˆ±áŠ•-á‹¨á‰»áˆˆ-áˆáˆ‹áˆ½ áŒ¥á‰ á‰ƒ á‰°áˆ°áŒ¥á‰·áˆ â€” á‰°áŒ á‰¥á‰€á‹‹áˆ</string>
 
     <!-- =====================================================================
-         Preset message templates — Amharic
+         Preset message templates â€” Amharic
          REVIEW: Transliterations in comments for native speaker verification.
          ===================================================================== -->
 
     <!-- "Yikirta tiriwon amitognal. Bizum sayikoy idelwilotalehu."
          "Sorry I missed your call. I'll call you back soon." -->
-    <string name="template_am_1">ይቅርታ ጥሪዎን አምልጦኛል። ብዙም ሳይቆይ እደውሎልዎታለሁ።</string>
 
     <!-- "Ahun tiri mekibel alchilim. Tolo tolo idelwilotalehu."
          "I can't take calls right now. I'll call you back very soon." -->
-    <string name="template_am_2">አሁን ጥሪ መቀበል አልችልም። ቶሎ ቶሎ እደውሎልዎታለሁ።</string>
 
     <!-- "Sibiseba lay nenyi. Bizum sayikoy idelwilotalehu."
          "I'm in a meeting. I'll call you back soon." -->
-    <string name="template_am_3">ስብሰባ ላይ ነኝ። ብዙም ሳይቆይ እደውሎልዎታለሁ።</string>
 
     <!-- "Iyenedahu new. Sideris idelwilotalehu."
          "I'm driving. I'll call you when I arrive." -->
-    <string name="template_am_4">እየነዳሁ ነው። ሲደርስ እደውሎልዎታለሁ።</string>
 
     <!-- "Ahun tinish sira tetejemje nenyi. Watsapp weyim SMS yilakulgni."
          "I'm a bit busy with work. Please send me a WhatsApp or SMS." -->
-    <string name="template_am_5">አሁን ትንሽ ሥራ ተጠምጄ ነኝ። ዋትስአፕ ወይም SMS ይላኩልኝ።</string>
 
     <!-- Activity Log status labels -->
-    <string name="status_sent">ተልኳል</string>
-    <string name="status_failed">አልተሳካም</string>
-    <string name="status_suppressed_quiet">የእረፍት ሰዓት</string>
-    <string name="status_suppressed_cooldown">ተጠብቋል</string>
-    <string name="status_pending">በሂደት ላይ</string>
 
-    <string name="test_screen_running">✓ አገልግሎት እየሄደ ነው\n✓ ፍቃዶች ተሰጥተዋል</string>
-    <string name="test_screen_no_permissions">⚠ ፍቃዶች አልተሰጡም።\nፍቃዶችን ለመስጠት ይጫኑ።</string>
-    <string name="btn_grant_permissions">ፍቃዶች ስጥ</string>
 </resources>
