@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Brand color system — Adera SMS
+    Spec: "Deep green + gold/amber accents"
+    Usage rules (locked in spec):
+      - Green: primary structure, backgrounds, toolbar
+      - Gold:  ONE call-to-action / accent element per screen only
+      - Ember: failure/alert states ONLY — never decorative
+-->
+<resources>
+    <!-- Primary: Deep green -->
+    <color name="brand_green_900">#1B5E20</color>   <!-- Darkest, for status bars -->
+    <color name="brand_green_800">#2E7D32</color>   <!-- Primary brand color -->
+    <color name="brand_green_700">#388E3C</color>   <!-- Lighter variant -->
+    <color name="brand_green_600">#43A047</color>   <!-- Hover / pressed state -->
+
+    <!-- Deep dark backgrounds (dark-mode-first UI) -->
+    <color name="brand_green_bg_dark">#0A1A0B</color>   <!-- Page background -->
+    <color name="brand_green_surface">#132214</color>    <!-- Card / sheet surface -->
+    <color name="brand_green_surface_variant">#1E3320</color> <!-- Elevated surface -->
+
+    <!-- Gold / amber — CTA accent (ONE use per screen per spec) -->
+    <color name="brand_gold_primary">#F9A825</color>  <!-- Primary CTA / toggle ON -->
+    <color name="brand_gold_dark">#F57F17</color>     <!-- Pressed state -->
+    <color name="brand_gold_light">#FFCA28</color>    <!-- Icon tint on dark surface -->
+
+    <!-- Ember — ONLY for error / failure states. Never decorative. -->
+    <color name="brand_ember">#BF360C</color>
+    <color name="brand_ember_light">#E64A19</color>
+
+    <!-- Text on dark surfaces -->
+    <color name="on_dark_primary">#E8F5E9</color>       <!-- Primary text (near-white green tint) -->
+    <color name="on_dark_secondary">#A5D6A7</color>     <!-- Secondary / hint text -->
+    <color name="on_dark_disabled">#4D6B4F</color>      <!-- Disabled text -->
+
+    <!-- White / black utilities -->
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+</resources>

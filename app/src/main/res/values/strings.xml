@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Adera SMS</string>
+
+    <!-- =====================================================================
+         Foreground service notification
+         Spec 12.7: "Must communicate active protection, not just 'app is running.'"
+         ===================================================================== -->
+    <string name="notification_channel_service_name">Adera SMS Service</string>
+    <string name="notification_channel_service_description">Persistent notification confirming auto-reply protection is active. Low priority — does not make sound or vibrate.</string>
+    <string name="notification_service_title">Adera SMS is active</string>
+    <string name="notification_service_text">Auto-reply protection enabled — you\'re covered</string>
+
+    <!-- =====================================================================
+         Preset message templates — English (spec 12.8: English + Amharic only)
+         These are seeded into Room on first launch by AderaSmsApplication.
+         Template 1 is the app default (isDefault=true).
+         ===================================================================== -->
+    <string name="template_en_1">Sorry I missed your call. I\'ll call you back soon.</string>
+    <string name="template_en_2">I\'m currently unavailable. I\'ll get back to you as soon as possible.</string>
+    <string name="template_en_3">I\'m in a meeting. I\'ll call you back shortly.</string>
+    <string name="template_en_4">I\'m driving right now. I\'ll call you when I arrive.</string>
+    <string name="template_en_5">I\'m busy right now. Please send me a text and I\'ll reply soon.</string>
+
+    <!-- =====================================================================
+         Activity Log status labels (used in Step 7 UI)
+         ===================================================================== -->
+    <string name="status_sent">Sent</string>
+    <string name="status_failed">Failed</string>
+    <string name="status_suppressed_quiet">Quiet hours</string>
+    <string name="status_suppressed_cooldown">Cooldown</string>
+    <string name="status_pending">Pending</string>
+
+    <!-- Minimal test screen (Steps 1–3 stub only — replaced in Step 5) -->
+    <string name="test_screen_running">✓ Service running\n✓ Permissions granted\n\nMiss a call, then check:\nadb logcat -s AderaSMS</string>
+    <string name="test_screen_no_permissions">⚠ Permissions not fully granted.\nTap below to retry.</string>
+    <string name="btn_grant_permissions">Grant Permissions</string>
+</resources>

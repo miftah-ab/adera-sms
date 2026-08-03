@@ -1,0 +1,46 @@
+# Adera SMS — .gitignore
+
+# ---- Build outputs ----
+/build
+/app/build
+*.apk
+*.aab
+*.aar
+
+# ---- Signing — NEVER commit the keystore to the repo ----
+keystore.jks
+*.jks
+*.p12
+*.keystore
+keystore.b64
+keystore.properties
+
+# ---- Android Studio ----
+*.iml
+.idea/
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries
+.idea/libraries
+.idea/caches
+*.DS_Store
+.DS_Store
+Thumbs.db
+
+# ---- Gradle ----
+.gradle/
+gradle/wrapper/gradle-wrapper.jar   # Binary — generated locally by "gradle wrapper"
+local.properties
+*.log
+
+# ---- Room schema exports (keep if you want migration history in the repo) ----
+# app/schemas/
+
+# ---- Test outputs ----
+app/src/androidTest/
+app/src/test/
+
+# ---- OS ----
+*.orig

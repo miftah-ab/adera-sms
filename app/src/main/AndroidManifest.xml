@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- =====================================================================
+         PERMISSIONS
+         Each permission is explained to the user BEFORE the OS prompt fires
+         (contextual priming — spec §3.3). Explainer UI is in OnboardingScreen.
+         ===================================================================== -->
+
+    <!-- "To know when a call was missed" -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
+    <!-- "To get the caller's number so we can text them back" (also used on API 31+
+         to query the call log since TelephonyCallback no longer exposes the number) -->
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+
+    <!-- "To send your auto-reply message" -->
+    <uses-permission android:name="android.permission.SEND_SMS" />
+
+    <!-- Restart service after device reboot -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Required for all foreground services (API 28+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <!-- Required for 'dataSync' foreground service type (API 34+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+    <!-- Required to show the foreground service notification (API 33+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Required to request battery optimization exemption (guided in onboarding) -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- WorkManager internal — needed for constraint-based scheduling -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application
+        android:name=".AderaSmsApplication"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AderaSms"
+        tools:targetApi="34">
+
+        <!-- ── Main activity ──────────────────────────────────────────────── -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- ── CallMonitorService ─────────────────────────────────────────
+             foregroundServiceType="dataSync": satisfies the API 34 requirement
+             that all foreground services declare a type. dataSync is appropriate
+             because the service processes and logs call data locally.
+
+             stopWithTask="false": keeps the service alive even when the user
+             swipes the app away from the Recents screen — critical for background
+             call monitoring.
+
+             exported="false": only this app can start this service.
+         ────────────────────────────────────────────────────────────────── -->
+        <service
+            android:name=".service.CallMonitorService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false"
+            android:stopWithTask="false" />
+
+        <!-- ── BootReceiver ────────────────────────────────────────────────
+             Listens for both BOOT_COMPLETED (standard reboot) and
+             LOCKED_BOOT_COMPLETED (direct boot, before first unlock on API 24+).
+             exported="false": only the system can send these intents.
+         ────────────────────────────────────────────────────────────────── -->
+        <receiver
+            android:name=".receiver.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+    </application>
+
+</manifest>

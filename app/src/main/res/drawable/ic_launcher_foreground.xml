@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher icon foreground layer for adaptive icons (API 26+).
+     Icon concept from spec: "Phone silhouette + reply-arrow/checkmark inside a speech bubble"
+     Uses brand gold (#F9A825) on a transparent background.
+     The adaptive icon framework clips to a circle/squircle — keep important content
+     within the inner 72dp safe zone of the 108dp viewport. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Speech bubble — gold, centered in safe zone -->
+    <path
+        android:fillColor="#F9A825"
+        android:pathData="M76,24H44C40.7,24 38,26.7 38,30V62C38,65.3 40.7,68 44,68H50L60,80L70,68H76C79.3,68 82,65.3 82,62V30C82,26.7 79.3,24 76,24Z"/>
+
+    <!-- Checkmark inside bubble — deep green for contrast -->
+    <path
+        android:fillColor="#1B5E20"
+        android:strokeColor="#1B5E20"
+        android:strokeWidth="1"
+        android:pathData="M50,49.5L56.5,56L71,41.5L68.5,39L56.5,51L52.5,47L50,49.5Z"/>
+</vector>
