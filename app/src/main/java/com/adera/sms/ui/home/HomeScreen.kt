@@ -44,15 +44,14 @@ fun HomeScreen(
     onNavigateToTemplates: () -> Unit,
     onNavigateToLog: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory)
+    viewModel: HomeViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
 
     val settings by viewModel.settings.collectAsStateWithLifecycle()
-    val template by viewModel.activeTemplate.collectAsStateWithLifecycle()
-    val permissions by viewModel.permissions.collectAsStateWithLifecycle()
-    val recentLogs by viewModel.recentLogs.collectAsStateWithLifecycle(initialValue = emptyList())
+    val template by viewModel.defaultTemplate.collectAsStateWithLifecycle()
+    val permissions by viewModel.permissionStatus.collectAsStateWithLifecycle()
 
     val isOn = settings?.autoReplyEnabled == true
 
@@ -109,7 +108,6 @@ fun HomeScreen(
         ) {
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Conditional Alert Card
             if (!permissions.allCoreGranted) {
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),

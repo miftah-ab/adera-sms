@@ -10,7 +10,6 @@ import androidx.navigation.navArgument
 import com.adera.sms.ui.activitylog.ActivityLogScreen
 import com.adera.sms.ui.home.HomeScreen
 import com.adera.sms.ui.onboarding.OnboardingScreen
-import com.adera.sms.ui.settings.QuietHoursScreen
 import com.adera.sms.ui.settings.SettingsScreen
 import com.adera.sms.ui.templates.TemplateEditorScreen
 import com.adera.sms.ui.update.ForceUpdateScreen
@@ -58,7 +57,6 @@ fun AderaNavGraph(
 
         composable(Screen.Settings.route) {
             SettingsScreen(
-                onNavigateToQuietHours = { navController.navigate(Screen.QuietHours.route) },
                 onBack                 = { navController.popBackStack() },
                 onForceUpdate          = { url ->
                     navController.navigate(Screen.ForceUpdate.buildRoute(url)) {

@@ -148,7 +148,7 @@ class SmsSenderWorker(
                     try {
                         applicationContext.unregisterReceiver(receiver)
                     } catch (ex: Exception) {}
-                    if (continuation.isActive) continuation.resumeWith(Result.failure(e))
+                    if (continuation.isActive) continuation.resume(Result.failure())
                 }
             }.let { result ->
                 // Now we update the DB based on the result

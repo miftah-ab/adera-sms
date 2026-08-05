@@ -15,7 +15,7 @@ import java.util.*
 @Composable
 fun QuietHoursSheet(
     onDismissRequest: () -> Unit,
-    viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
+    viewModel: SettingsViewModel = viewModel()
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     
@@ -90,8 +90,8 @@ fun QuietHoursSheet(
                 onClick = {
                     if (isEnabled) {
                         viewModel.setQuietHours(
-                            startMins = startTimeState.hour * 60 + startTimeState.minute,
-                            endMins = endTimeState.hour * 60 + endTimeState.minute
+                            startTimeState.hour * 60 + startTimeState.minute,
+                            endTimeState.hour * 60 + endTimeState.minute
                         )
                     } else {
                         viewModel.setQuietHours(0, 0)

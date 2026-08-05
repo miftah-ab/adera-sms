@@ -24,20 +24,20 @@ import com.adera.sms.update.UpdateStatus
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onNavigateToQuietHours: () -> Unit,
     onBack: () -> Unit,
     onForceUpdate: (String) -> Unit,
-    viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
+    viewModel: SettingsViewModel = viewModel()
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val updateStatus by viewModel.updateStatus.collectAsStateWithLifecycle()
     val isChecking by viewModel.isCheckingUpdate.collectAsStateWithLifecycle()
 
     var showClearDataDialog by remember { mutableStateOf(false) }
+    var showQuietHoursSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(updateStatus) {
         val s = updateStatus
-        if (s is UpdateStatus.UpdateAvailable && s.info.isBlocking) {
+        if (s is UpdateStatus.ForceUpdate) {
             onForceUpdate(s.info.downloadUrl)
         }
     }
@@ -99,7 +99,7 @@ fun SettingsScreen(
                     icon = Icons.Rounded.NightsStay,
                     title = "Quiet Hours",
                     subtitle = "Pause replies at night",
-                    onClick = onNavigateToQuietHours
+                    onClick = { showQuietHoursSheet = true }
                 )
                 Divider(modifier = Modifier.padding(start = 56.dp), color = MaterialTheme.colorScheme.outlineVariant)
                 SettingsRow(
@@ -189,6 +189,10 @@ fun SettingsScreen(
             
             Spacer(modifier = Modifier.height(32.dp))
         }
+    }
+    
+    if (showQuietHoursSheet) {
+        com.adera.sms.ui.settings.QuietHoursSheet(onDismissRequest = { showQuietHoursSheet = false })
     }
 }
 

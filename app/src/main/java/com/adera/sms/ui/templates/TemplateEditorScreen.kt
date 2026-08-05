@@ -32,7 +32,7 @@ private const val SMS_MAX_CHARS = 160
 @Composable
 fun TemplateEditorScreen(
     onBack: () -> Unit,
-    viewModel: TemplateViewModel = viewModel(factory = TemplateViewModel.Factory)
+    viewModel: TemplateViewModel = viewModel()
 ) {
     val templates by viewModel.templates.collectAsStateWithLifecycle(initialValue = emptyList())
     var selectedLang by remember { mutableStateOf("en") }
