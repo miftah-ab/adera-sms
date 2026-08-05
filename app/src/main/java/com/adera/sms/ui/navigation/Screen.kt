@@ -7,7 +7,6 @@ sealed class Screen(val route: String) {
     object TemplateEditor  : Screen("template_editor")
     object ActivityLog     : Screen("activity_log")
     object Settings        : Screen("settings")
-    object QuietHours      : Screen("quiet_hours")
     object ForceUpdate     : Screen("force_update/{downloadUrl}") {
         fun buildRoute(downloadUrl: String) = "force_update/$downloadUrl"
     }

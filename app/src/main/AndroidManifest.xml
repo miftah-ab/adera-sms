@@ -17,6 +17,9 @@
 
     <!-- "To send your auto-reply message" -->
     <uses-permission android:name="android.permission.SEND_SMS" />
+    
+    <!-- Required for the update checker to fetch version.json -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- Restart service after device reboot -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -87,6 +90,16 @@
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
     </application>
 

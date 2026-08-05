@@ -30,8 +30,8 @@ interface SettingsDao {
     @Query("UPDATE app_settings SET quietHoursStart = :start, quietHoursEnd = :end WHERE id = 1")
     suspend fun setQuietHours(start: Int, end: Int)
 
-    @Query("UPDATE app_settings SET onboardingComplete = 1 WHERE id = 1")
-    suspend fun markOnboardingComplete()
+    @Query("UPDATE app_settings SET consentGiven = 1, consentTimestamp = :timestamp WHERE id = 1")
+    suspend fun markConsentGiven(timestamp: Long)
 
     @Query("UPDATE app_settings SET lastUpdateCheck = :timestamp WHERE id = 1")
     suspend fun setLastUpdateCheck(timestamp: Long)

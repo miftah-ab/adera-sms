@@ -1,6 +1,7 @@
 package com.adera.sms.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -17,11 +18,13 @@ import com.adera.sms.ui.update.ForceUpdateScreen
 @Composable
 fun AderaNavGraph(
     navController: NavHostController,
-    startDestination: String
+    startDestination: String,
+    modifier: Modifier = Modifier
 ) {
     NavHost(
         navController  = navController,
-        startDestination = startDestination
+        startDestination = startDestination,
+        modifier = modifier
     ) {
         composable(Screen.Onboarding.route) {
             OnboardingScreen(
@@ -62,12 +65,6 @@ fun AderaNavGraph(
                         popUpTo(0) { inclusive = true }  // Clear entire back stack — cannot go back
                     }
                 }
-            )
-        }
-
-        composable(Screen.QuietHours.route) {
-            QuietHoursScreen(
-                onBack = { navController.popBackStack() }
             )
         }
 

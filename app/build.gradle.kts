@@ -12,8 +12,8 @@ android {
         applicationId  = "com.adera.sms"
         minSdk         = 26   // Android 8.0 Oreo — covers Tecno/Infinix budget devices in Ethiopia
         targetSdk      = 34   // Android 14
-        versionCode    = 1    // INCREMENT this for every release; used by forced-update mechanism (spec 12.6)
-        versionName    = "1.0.0"
+        versionCode    = 2    // INCREMENT this for every release; used by forced-update mechanism (spec 12.6)
+        versionName    = "1.0.1"
 
         // Export Room schema for migration history tracking
         ksp {
@@ -103,6 +103,7 @@ dependencies {
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.extended)
     debugImplementation(libs.compose.ui.tooling)
 
     // Room — fully local SQLite, zero network dependency (spec 7: no backend for v1)

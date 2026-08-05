@@ -9,7 +9,9 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.provider.CallLog
 import android.telephony.PhoneStateListener
 import android.telephony.SubscriptionManager
@@ -31,10 +33,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.security.MessageDigest
 import java.util.Calendar
+import kotlin.coroutines.resume
 
 /**
  * Foreground service that monitors phone call state and sends auto-reply SMS on missed calls.
@@ -65,13 +68,6 @@ class CallMonitorService : Service() {
 
         /** Per-number reply cooldown window (spec §12.7). Hidden constant — not user-facing. */
         private const val COOLDOWN_MS = 10 * 60 * 1000L  // 10 minutes
-
-        /**
-         * Delay after detecting IDLE state before querying the call log for the number.
-         * Used only on API 31+ (TelephonyCallback path). The call log may not be updated
-         * immediately when IDLE fires — 1.5 s covers all devices tested so far.
-         */
-        private const val CALL_LOG_QUERY_DELAY_MS = 1500L
 
         fun start(context: Context) {
             val intent = Intent(context, CallMonitorService::class.java)
@@ -180,11 +176,6 @@ class CallMonitorService : Service() {
         }
     }
 
-    /**
-     * Returns the list of active subscription IDs.
-     * Falls back to [-1] (system default) if READ_PHONE_STATE is not granted or the
-     * subscription list is empty (common on some Tecno devices right after permission grant).
-     */
     private fun activeSubscriptionIds(): List<Int> {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
             != PackageManager.PERMISSION_GRANTED) {
@@ -205,8 +196,6 @@ class CallMonitorService : Service() {
     private fun newTelephonyCallback(subId: Int) =
         object : TelephonyCallback(), TelephonyCallback.CallStateListener {
             override fun onCallStateChanged(state: Int) {
-                // API 31+: number NOT included in callback (privacy change).
-                // We query the call log after detecting IDLE (with a small delay).
                 onStateChange(state, phoneNumber = null, subId = subId)
             }
         }
@@ -260,19 +249,16 @@ class CallMonitorService : Service() {
             Log.e(TAG, "Settings not found in DB — skipping"); return
         }
 
-        // Gate 1: master toggle
         if (!settings.autoReplyEnabled) {
             Log.d(TAG, "Auto-reply OFF — skipping"); return
         }
 
-        // Gate 2: quiet hours
         if (isWithinQuietHours(settings)) {
             Log.d(TAG, "Quiet hours active — suppressing")
             writeLogEntry(callerNumber, subId, CallStatus.SUPPRESSED_QUIET_HOURS)
             return
         }
 
-        // Gate 3: per-number 10-minute cooldown
         val hash = sha256(callerNumber)
         if (isInCooldown(hash)) {
             Log.d(TAG, "Cooldown active — suppressing duplicate")
@@ -280,15 +266,13 @@ class CallMonitorService : Service() {
             return
         }
 
-        // Get active template
         val template = database.templateDao().getDefaultTemplate() ?: run {
             Log.e(TAG, "No default template — cannot send SMS"); return
         }
 
-        // Write PENDING entry
         val logId = database.callLogDao().insertEntry(
             CallLogEntry(
-                callerNumberMasked = maskNumber(callerNumber),
+                callerNumber       = callerNumber,
                 callerNumberHash   = hash,
                 timestamp          = System.currentTimeMillis(),
                 simSlot            = subId,
@@ -296,7 +280,6 @@ class CallMonitorService : Service() {
             )
         )
 
-        // Dispatch SMS worker
         val request = SmsSenderWorker.buildRequest(callerNumber, subId, template.text, logId)
         WorkManager.getInstance(applicationContext).enqueue(request)
         Log.i(TAG, "SmsSenderWorker enqueued logId=$logId subId=$subId")
@@ -305,24 +288,51 @@ class CallMonitorService : Service() {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     /** Used on API 31+ where TelephonyCallback doesn't provide the caller number directly. */
-    private suspend fun queryCallLogForMissedNumber(): String? {
-        delay(CALL_LOG_QUERY_DELAY_MS)
+    private suspend fun queryCallLogForMissedNumber(): String? = suspendCancellableCoroutine { cont ->
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CALL_LOG)
             != PackageManager.PERMISSION_GRANTED) {
-            Log.e(TAG, "READ_CALL_LOG not granted — cannot fetch caller number"); return null
+            Log.e(TAG, "READ_CALL_LOG not granted — cannot fetch caller number")
+            cont.resume(null)
+            return@suspendCancellableCoroutine
         }
-        return try {
-            contentResolver.query(
-                CallLog.Calls.CONTENT_URI,
-                arrayOf(CallLog.Calls.NUMBER),
-                "${CallLog.Calls.TYPE} = ${CallLog.Calls.MISSED_TYPE}",
-                null,
-                "${CallLog.Calls.DATE} DESC"
-            )?.use { cursor ->
-                if (cursor.moveToFirst()) cursor.getString(0) else null
+        
+        val resolver = contentResolver
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean, uri: Uri?) {
+                try {
+                    resolver.unregisterContentObserver(this)
+                } catch (e: Exception) {}
+
+                try {
+                    val cursor = resolver.query(
+                        CallLog.Calls.CONTENT_URI,
+                        arrayOf(CallLog.Calls.NUMBER),
+                        "${CallLog.Calls.TYPE} = ?",
+                        arrayOf(CallLog.Calls.MISSED_TYPE.toString()),
+                        "${CallLog.Calls.DATE} DESC LIMIT 1"
+                    )
+                    cursor?.use {
+                        if (it.moveToFirst()) {
+                            if (cont.isActive) cont.resume(it.getString(0))
+                        } else {
+                            if (cont.isActive) cont.resume(null)
+                        }
+                    } ?: run {
+                        if (cont.isActive) cont.resume(null)
+                    }
+                } catch (e: SecurityException) {
+                    Log.e(TAG, "SecurityException querying call log", e)
+                    if (cont.isActive) cont.resume(null)
+                }
             }
-        } catch (e: SecurityException) {
-            Log.e(TAG, "SecurityException querying call log", e); null
+        }
+        
+        resolver.registerContentObserver(CallLog.Calls.CONTENT_URI, true, observer)
+        
+        cont.invokeOnCancellation {
+            try {
+                resolver.unregisterContentObserver(observer)
+            } catch (e: Exception) {}
         }
     }
 
@@ -344,7 +354,7 @@ class CallMonitorService : Service() {
     private suspend fun writeLogEntry(number: String, subId: Int, status: CallStatus) {
         database.callLogDao().insertEntry(
             CallLogEntry(
-                callerNumberMasked = maskNumber(number),
+                callerNumber       = number,
                 callerNumberHash   = sha256(number),
                 timestamp          = System.currentTimeMillis(),
                 simSlot            = subId,

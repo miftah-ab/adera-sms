@@ -4,8 +4,24 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.List
+import androidx.compose.material.icons.rounded.Message
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.adera.sms.data.AppDatabase
 import com.adera.sms.ui.navigation.AderaNavGraph
@@ -17,16 +33,9 @@ import kotlinx.coroutines.launch
  * Single Activity — hosts the entire Compose navigation graph.
  *
  * On launch:
- *   1. Reads [AppSettings.onboardingComplete] from Room.
+ *   1. Reads [AppSettings.consentGiven] from Room.
  *   2. If false → start at [Screen.Onboarding].
  *   3. If true  → start at [Screen.Home].
- *
- * The start destination is held in [startDest] state; the NavHost is not shown
- * until the DB read resolves (avoids a flash of the wrong screen).
- *
- * The update check is delegated to [SettingsScreen] on user action. Forced-update
- * navigation happens inside the NavGraph when SettingsViewModel detects a blocking
- * version (spec §12.6).
  */
 class MainActivity : ComponentActivity() {
 
@@ -43,7 +52,7 @@ class MainActivity : ComponentActivity() {
                     lifecycleScope.launch {
                         val db       = AppDatabase.getInstance(applicationContext)
                         val settings = db.settingsDao().getSettings()
-                        startDest = if (settings?.onboardingComplete == true)
+                        startDest = if (settings?.consentGiven == true)
                             Screen.Home.route
                         else
                             Screen.Onboarding.route
@@ -52,13 +61,59 @@ class MainActivity : ComponentActivity() {
 
                 if (startDest != null) {
                     val navController = rememberNavController()
-                    AderaNavGraph(
-                        navController    = navController,
-                        startDestination = startDest!!
+                    val navBackStackEntry by navController.currentBackStackEntryAsState()
+                    val currentDestination = navBackStackEntry?.destination
+
+                    // Only show bottom bar on main destinations
+                    val showBottomBar = currentDestination?.route in listOf(
+                        Screen.Home.route,
+                        Screen.TemplateEditor.route,
+                        Screen.ActivityLog.route,
+                        Screen.Settings.route
                     )
+
+                    Scaffold(
+                        bottomBar = {
+                            if (showBottomBar) {
+                                NavigationBar {
+                                    val items = listOf(
+                                        Triple(Screen.Home.route, "Home", Icons.Rounded.Home),
+                                        Triple(Screen.TemplateEditor.route, "Templates", Icons.Rounded.Message),
+                                        Triple(Screen.ActivityLog.route, "Log", Icons.Rounded.List),
+                                        Triple(Screen.Settings.route, "Settings", Icons.Rounded.Settings)
+                                    )
+                                    items.forEach { (route, label, icon) ->
+                                        NavigationBarItem(
+                                            icon = { Icon(icon, contentDescription = label) },
+                                            label = { Text(label) },
+                                            selected = currentDestination?.hierarchy?.any { it.route == route } == true,
+                                            onClick = {
+                                                navController.navigate(route) {
+                                                    // Pop up to the start destination of the graph to
+                                                    // avoid building up a large stack of destinations
+                                                    popUpTo(navController.graph.findStartDestination().id) {
+                                                        saveState = true
+                                                    }
+                                                    // Avoid multiple copies of the same destination when
+                                                    // reselecting the same item
+                                                    launchSingleTop = true
+                                                    // Restore state when reselecting a previously selected item
+                                                    restoreState = true
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    ) { innerPadding ->
+                        AderaNavGraph(
+                            navController    = navController,
+                            startDestination = startDest!!,
+                            modifier = Modifier.padding(innerPadding)
+                        )
+                    }
                 }
-                // While startDest is null, the window shows the splash background color
-                // from themes.xml (brand_green_bg_dark) — no white flash.
             }
         }
     }

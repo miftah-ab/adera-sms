@@ -1,6 +1,11 @@
 package com.adera.sms.service
 
+import android.app.Activity
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.telephony.SmsManager
 import android.telephony.SubscriptionManager
@@ -13,7 +18,10 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.adera.sms.data.AppDatabase
 import com.adera.sms.data.entity.CallStatus
+import kotlinx.coroutines.suspendCancellableCoroutine
+import java.util.UUID
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
 
 /**
  * WorkManager worker responsible for sending the auto-reply SMS and updating the log entry.
@@ -80,11 +88,81 @@ class SmsSenderWorker(
 
         return try {
             val smsManager = selectSmsManager(subscriptionId)
-            smsManager.sendTextMessage(callerNumber, null, templateText, null, null)
+            
+            suspendCancellableCoroutine { continuation ->
+                val intentAction = "com.adera.sms.SMS_SENT_${UUID.randomUUID()}"
+                
+                val sentIntent = PendingIntent.getBroadcast(
+                    applicationContext,
+                    0,
+                    Intent(intentAction).setPackage(applicationContext.packageName),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                )
 
-            Log.i(TAG, "SMS sent successfully (attempt ${runAttemptCount + 1})")
-            if (logEntryId != -1) db.callLogDao().updateStatus(logEntryId, CallStatus.SENT)
-            Result.success()
+                val receiver = object : BroadcastReceiver() {
+                    override fun onReceive(context: Context, intent: Intent) {
+                        try {
+                            applicationContext.unregisterReceiver(this)
+                        } catch (e: Exception) {
+                            // Already unregistered
+                        }
+                        
+                        if (resultCode == Activity.RESULT_OK) {
+                            Log.i(TAG, "SMS sent successfully (attempt ${runAttemptCount + 1})")
+                            if (logEntryId != -1) {
+                                // DB ops run on Room's dispatcher, so we don't need a specific scope here
+                                // wait, we shouldn't block the receiver thread, but updateStatus is suspend
+                                // We can use GlobalScope, but better to do it synchronously if possible, 
+                                // wait, updateStatus is a suspend function. Let's just return Result and do DB ops after.
+                            }
+                            if (continuation.isActive) continuation.resume(Result.success())
+                        } else {
+                            Log.e(TAG, "SMS send failed with resultCode: $resultCode (attempt ${runAttemptCount + 1})")
+                            if (runAttemptCount < 1) {
+                                Log.d(TAG, "Scheduling one retry in ~30 seconds")
+                                if (continuation.isActive) continuation.resume(Result.retry())
+                            } else {
+                                Log.e(TAG, "SMS failed after retry ?" marking FAILED")
+                                if (continuation.isActive) continuation.resume(Result.failure())
+                            }
+                        }
+                    }
+                }
+
+                val filter = IntentFilter(intentAction)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    applicationContext.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+                } else {
+                    applicationContext.registerReceiver(receiver, filter)
+                }
+
+                continuation.invokeOnCancellation {
+                    try {
+                        applicationContext.unregisterReceiver(receiver)
+                    } catch (e: Exception) {}
+                }
+
+                try {
+                    smsManager.sendTextMessage(callerNumber, null, templateText, sentIntent, null)
+                } catch (e: Exception) {
+                    try {
+                        applicationContext.unregisterReceiver(receiver)
+                    } catch (ex: Exception) {}
+                    if (continuation.isActive) continuation.resumeWith(Result.failure(e))
+                }
+            }.let { result ->
+                // Now we update the DB based on the result
+                when (result) {
+                    is Result.Success -> {
+                        if (logEntryId != -1) db.callLogDao().updateStatus(logEntryId, CallStatus.SENT)
+                    }
+                    is Result.Failure -> {
+                        if (logEntryId != -1) db.callLogDao().updateStatus(logEntryId, CallStatus.FAILED)
+                    }
+                    else -> {}
+                }
+                result
+            }
 
         } catch (e: SecurityException) {
             // SEND_SMS was revoked — no point retrying. The Home screen warning will prompt

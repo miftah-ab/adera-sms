@@ -21,8 +21,8 @@ data class CallLogEntry(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
 
-    /** Display-safe masked number, e.g. "091•••42". */
-    val callerNumberMasked: String,
+    /** The full E.164 number. Spec A 12.2 reverted, numbers are now stored and visible. */
+    val callerNumber: String,
 
     /** SHA-256 hex of the full E.164 number. Used for cooldown lookups only. */
     val callerNumberHash: String,

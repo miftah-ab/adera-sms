@@ -28,5 +28,7 @@ data class AppSettings(
 
     val lastUpdateCheck: Long = 0L,     // Epoch ms of last version.json fetch
 
-    val onboardingComplete: Boolean = false // False = show onboarding on next launch
+    val consentGiven: Boolean = false, // False = show privacy gate on next launch, hard stop
+    
+    val consentTimestamp: Long = 0L     // Epoch ms of when consent was given
 )

@@ -5,20 +5,19 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.adera.sms.ui.theme.*
 
 /**
- * Full-screen blocking update screen (spec §12.6).
+ * Full-screen blocking update screen (spec A 12.6).
  *
  * Shown when installedVersion < minSupportedVersionCode.
  * There is NO dismiss button and NO back navigation — the NavGraph clears the
@@ -29,50 +28,63 @@ import com.adera.sms.ui.theme.*
 fun ForceUpdateScreen(downloadUrl: String) {
     val context = LocalContext.current
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(GreenBgDark, GreenSurface))),
-        contentAlignment = Alignment.Center
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
         Column(
-            modifier = Modifier.padding(32.dp),
+            modifier = Modifier.padding(32.dp).fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text("⬆️", fontSize = 72.sp)
-            Spacer(Modifier.height(24.dp))
-            Text("Update Required",
-                style = MaterialTheme.typography.headlineMedium,
-                color = OnDarkPrimary, fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center)
-            Spacer(Modifier.height(12.dp))
+            Icon(
+                imageVector = Icons.Rounded.SystemUpdate,
+                contentDescription = "Update Required",
+                modifier = Modifier.size(80.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.height(32.dp))
             Text(
-                "This version of Adera SMS is no longer supported. " +
-                "Please download the latest version to continue.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = OnDarkSecondary,
+                "Update Required",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
             )
-            Spacer(Modifier.height(8.dp))
-            Text("Your auto-reply is still active — callers are covered.",
-                style = MaterialTheme.typography.bodySmall,
-                color = Green600, fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center)
-            Spacer(Modifier.height(36.dp))
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "This version of Adera SMS is no longer supported. Please download the latest version to continue.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(12.dp))
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shape = RoundedCornerShape(percent = 50)
+            ) {
+                Text(
+                    "Your auto-reply is still active — callers are covered.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+            Spacer(Modifier.height(48.dp))
             Button(
                 onClick = {
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))
                     context.startActivity(intent)
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
-                colors   = ButtonDefaults.buttonColors(
-                    containerColor = GoldPrimary, contentColor = Black),
-                shape    = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(percent = 50)
             ) {
-                Text("Download Update",
+                Text(
+                    "Download Update",
                     fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium)
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
         }
     }
