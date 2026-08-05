@@ -122,7 +122,7 @@ class SmsSenderWorker(
                                 Log.d(TAG, "Scheduling one retry in ~30 seconds")
                                 if (continuation.isActive) continuation.resume(Result.retry())
                             } else {
-                                Log.e(TAG, "SMS failed after retry ?" marking FAILED")
+                                Log.e(TAG, "SMS failed after retry - marking FAILED")
                                 if (continuation.isActive) continuation.resume(Result.failure())
                             }
                         }
