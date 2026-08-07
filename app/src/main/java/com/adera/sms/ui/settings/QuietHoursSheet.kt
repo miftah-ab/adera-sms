@@ -11,6 +11,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.util.*
 
+/**
+ * Quiet Hours bottom sheet.
+ *
+ * Item 1 fix: The time picker states are initialized from current DB values but the
+ * isEnabled toggle was using a stale `remember` snapshot. Fixed by deriving isEnabled
+ * directly from DB state and using the TimePickerState values at save time, which always
+ * reflects the current picker selection.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuietHoursSheet(
@@ -18,23 +26,28 @@ fun QuietHoursSheet(
     viewModel: SettingsViewModel = viewModel()
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
-    
-    // Parse current quiet hours
-    val currentStart = settings?.quietHoursStart ?: 0
-    val currentEnd = settings?.quietHoursEnd ?: 0
-    val isCurrentlyEnabled = currentStart != currentEnd
-    
-    var isEnabled by remember { mutableStateOf(isCurrentlyEnabled) }
-    
+
+    // Parse current quiet hours from DB — these are the "saved" values
+    val savedStart = settings?.quietHoursStart ?: 0
+    val savedEnd   = settings?.quietHoursEnd   ?: 0
+
+    // isEnabled is driven by DB state: enabled when start != end
+    var isEnabled by remember(savedStart, savedEnd) {
+        mutableStateOf(savedStart != savedEnd)
+    }
+
+    // Picker states initialized from DB values. rememberTimePickerState keys on the
+    // saved values so that if the sheet is dismissed and reopened the picker correctly
+    // reflects the last persisted selection.
     val startTimeState = rememberTimePickerState(
-        initialHour = currentStart / 60,
-        initialMinute = currentStart % 60,
-        is24Hour = false
+        initialHour   = if (savedStart != 0) savedStart / 60 else 22,
+        initialMinute = savedStart % 60,
+        is24Hour      = false
     )
     val endTimeState = rememberTimePickerState(
-        initialHour = currentEnd / 60,
-        initialMinute = currentEnd % 60,
-        is24Hour = false
+        initialHour   = if (savedEnd != 0) savedEnd / 60 else 7,
+        initialMinute = savedEnd % 60,
+        is24Hour      = false
     )
 
     ModalBottomSheet(onDismissRequest = onDismissRequest) {
@@ -52,33 +65,31 @@ fun QuietHoursSheet(
             ) {
                 Column {
                     Text("Quiet Hours", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    Text("Auto-replies are paused during this time.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "Auto replies are paused during this time.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 Switch(
                     checked = isEnabled,
                     onCheckedChange = { isEnabled = it },
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.secondary,
-                        checkedTrackColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)
+                        checkedThumbColor  = MaterialTheme.colorScheme.secondary,
+                        checkedTrackColor  = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)
                     )
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             if (isEnabled) {
-                // Since M3 TimePicker takes up a lot of vertical space, 
-                // typically we'd show the time text and tap to open a dialog picker.
-                // Or we can show the dial inline if it's the only one. 
-                // Since there's start and end, we'll use a simplified inline selector or show the text and tap to pick.
-                // For this, we'll just show the start time picker inline.
-                
                 Text("Start Time", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(8.dp))
                 TimePicker(state = startTimeState)
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
-                
+
                 Text("End Time", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(8.dp))
                 TimePicker(state = endTimeState)
@@ -89,11 +100,14 @@ fun QuietHoursSheet(
             Button(
                 onClick = {
                     if (isEnabled) {
-                        viewModel.setQuietHours(
-                            startTimeState.hour * 60 + startTimeState.minute,
-                            endTimeState.hour * 60 + endTimeState.minute
-                        )
+                        // Read from picker state at click time — this is the source of truth
+                        val startMinutes = startTimeState.hour * 60 + startTimeState.minute
+                        val endMinutes   = endTimeState.hour * 60 + endTimeState.minute
+                        // Guard: if start == end after rounding, nudge end by 1 min to keep enabled
+                        val finalEnd = if (startMinutes == endMinutes) endMinutes + 1 else endMinutes
+                        viewModel.setQuietHours(startMinutes, finalEnd)
                     } else {
+                        // Disabled: store 0,0 which the service treats as "no quiet hours"
                         viewModel.setQuietHours(0, 0)
                     }
                     onDismissRequest()

@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adera.sms.ui.settings.QuietHoursSheet
-import com.adera.sms.ui.settings.SimSelectionSheet
 import com.adera.sms.ui.theme.AderaShapes
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,11 +51,11 @@ fun HomeScreen(
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val template by viewModel.defaultTemplate.collectAsStateWithLifecycle()
     val permissions by viewModel.permissionStatus.collectAsStateWithLifecycle()
+    val recentLogs by viewModel.recentLogs.collectAsStateWithLifecycle()
 
     val isOn = settings?.autoReplyEnabled == true
 
     var showQuietHoursSheet by remember { mutableStateOf(false) }
-    var showSimSelectionSheet by remember { mutableStateOf(false) }
 
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -92,7 +91,7 @@ fun HomeScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isOn) "Active — auto-reply protection enabled" else "Inactive — auto-replies paused",
+                        text = if (isOn) "Active, auto reply protection enabled" else "Inactive, auto replies paused",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                     )
@@ -269,6 +268,62 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // Recent Activity Preview
+            if (recentLogs.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("RECENT ACTIVITY", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "View all", 
+                        style = MaterialTheme.typography.labelMedium, 
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { onNavigateToLog() }
+                    )
+                }
+                
+                recentLogs.forEach { entry ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        shape = AderaShapes.medium,
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(entry.callerNumber, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                Text(
+                                    text = android.text.format.DateUtils.getRelativeTimeSpanString(entry.timestamp, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS).toString(),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            
+                            val (label, bg, contentColor) = when (entry.status) {
+                                com.adera.sms.data.entity.CallStatus.SENT -> Triple("Sent", MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
+                                com.adera.sms.data.entity.CallStatus.FAILED -> Triple("Failed", MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
+                                com.adera.sms.data.entity.CallStatus.SUPPRESSED_QUIET_HOURS -> Triple("Quiet hrs", MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurfaceVariant)
+                                else -> Triple(entry.status.name.lowercase().replaceFirstChar { it.uppercase() }, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            
+                            Surface(shape = RoundedCornerShape(percent = 50), color = bg) {
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = contentColor,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             // Settings Shortcuts
             Row(
                 modifier = Modifier
@@ -291,33 +346,27 @@ fun HomeScreen(
                 Icon(Icons.Rounded.ChevronRight, contentDescription = "Open", tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
-            Row(
+            }
+            
+            Spacer(modifier = Modifier.weight(1f))
+            
+            Text(
+                "Support Adera SMS on Ye Buna",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { showSimSelectionSheet = true }
-                    .padding(vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Rounded.SimCard, contentDescription = "SIM Selection", tint = MaterialTheme.colorScheme.primary)
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("SIM Selection", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-                    Text("Choose which SIM sends replies", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Icon(Icons.Rounded.ChevronRight, contentDescription = "Open", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+                    .clickable { 
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("REPLACE_WITH_YE_BUNA_URL"))) 
+                    }
+                    .padding(vertical = 16.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 
     if (showQuietHoursSheet) {
         QuietHoursSheet(onDismissRequest = { showQuietHoursSheet = false })
-    }
-    if (showSimSelectionSheet) {
-        SimSelectionSheet(onDismissRequest = { showSimSelectionSheet = false })
     }
 }

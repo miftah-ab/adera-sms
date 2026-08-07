@@ -56,6 +56,8 @@ class MainActivity : ComponentActivity() {
                             Screen.Home.route
                         else
                             Screen.Onboarding.route
+                        // Track app open (mandatory, always fires)
+                        com.adera.sms.analytics.AnalyticsManager.appOpen(applicationContext)
                     }
                 }
 

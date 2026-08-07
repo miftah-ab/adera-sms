@@ -1,5 +1,6 @@
 package com.adera.sms.ui.templates
 
+import android.telephony.SmsMessage
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,9 +25,26 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adera.sms.data.entity.MessageTemplate
+import com.adera.sms.service.SmsSenderWorker
 import com.adera.sms.ui.theme.AderaShapes
 
-private const val SMS_MAX_CHARS = 160
+/**
+ * Calculates SMS segment info accounting for encoding.
+ * SmsMessage.calculateLength correctly handles GSM7 (160 chars/seg) vs Unicode (70 chars/seg).
+ * Returns Pair(segmentCount, charsUsedInFinalSegment).
+ *
+ * Item 14: The [signature] is included in the calculation so the counter reflects
+ * the true final message length including the mandatory " By Adera SMS" suffix.
+ */
+private fun smsSegmentInfo(userText: String, signature: String): Pair<Int, Int> {
+    val fullText = userText + signature
+    if (fullText.isEmpty()) return Pair(1, 0)
+    // calculateLength returns [codeUnits, codeUnitsRemaining, bytesPerChar, codeUnitsPerPage, codeUnitCount]
+    val lengths = SmsMessage.calculateLength(fullText, false)
+    val segments  = lengths[0]
+    val charsInLastSeg = lengths[4] // total chars across segments used
+    return Pair(segments, charsInLastSeg)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,6 +60,22 @@ fun TemplateEditorScreen(
     var showEditSheet by remember { mutableStateOf(false) }
     var templateToEdit by remember { mutableStateOf<MessageTemplate?>(null) }
 
+    // Item 16: "Coming soon" dialog state for New Template
+    var showComingSoonDialog by remember { mutableStateOf(false) }
+
+    if (showComingSoonDialog) {
+        AlertDialog(
+            onDismissRequest = { showComingSoonDialog = false },
+            title = { Text("Coming Soon") },
+            text  = { Text("Creating new templates is coming soon. You can edit your existing templates in the meantime.") },
+            confirmButton = {
+                TextButton(onClick = { showComingSoonDialog = false }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             Column(
@@ -53,8 +87,8 @@ fun TemplateEditorScreen(
                 Spacer(modifier = Modifier.height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding()))
                 Text("Templates", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(16.dp))
-                
-                // Segmented control / Chip row
+
+                // Segmented control
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -62,8 +96,8 @@ fun TemplateEditorScreen(
                     listOf("en" to "English", "am" to "Amharic").forEach { (code, label) ->
                         val selected = selectedLang == code
                         val containerColor by animateColorAsState(if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)
-                        val contentColor by animateColorAsState(if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
-                        
+                        val contentColor   by animateColorAsState(if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
+
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -80,7 +114,6 @@ fun TemplateEditorScreen(
             }
         },
         bottomBar = {
-            // Bottom-bar integrated action instead of FAB
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.background,
@@ -88,8 +121,8 @@ fun TemplateEditorScreen(
             ) {
                 Button(
                     onClick = {
-                        templateToEdit = null
-                        showEditSheet = true
+                        // Item 16: Always show "Coming soon" — do not open edit sheet for new templates
+                        showComingSoonDialog = true
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -133,12 +166,6 @@ fun TemplateEditorScreen(
                 if (templateToEdit == null) {
                     viewModel.saveCustomTemplate(text, selectedLang)
                 } else {
-                    // Update existing - in our simple view model we might just need to implement update or recreate it
-                    // The ViewModel needs an update method. For now, since we only had saveCustomTemplate, 
-                    // I will delete old and add new if it's a custom template, but we can't edit presets.
-                    // Wait, if it's a preset, we can't edit it. But we should be able to create a new one based on it.
-                    // Let's assume we have an update or we just save a new one and set it as default.
-                    // To keep it simple, we save it as a new custom template and set it as default.
                     viewModel.saveCustomTemplate(text, selectedLang)
                 }
                 showEditSheet = false
@@ -213,14 +240,16 @@ private fun EditTemplateSheet(
     onDismiss: () -> Unit
 ) {
     var text by remember { mutableStateOf(template?.text ?: "") }
-    
-    // Live character counter color shift (neutral -> accent when approaching 160)
-    val ratio = (text.length.toFloat() / SMS_MAX_CHARS).coerceIn(0f, 1f)
+
+    // Item 10 & 14: Include the signature in segment calculation, handle Unicode correctly
+    val (segmentCount, _) = remember(text) { smsSegmentInfo(text, SmsSenderWorker.SIGNATURE) }
+    val fullLength = text.length + SmsSenderWorker.SIGNATURE.length
+
     val counterColor by animateColorAsState(
         targetValue = when {
-            text.length > SMS_MAX_CHARS -> MaterialTheme.colorScheme.error
-            text.length > 140 -> MaterialTheme.colorScheme.secondary
-            else -> MaterialTheme.colorScheme.onSurfaceVariant
+            segmentCount > 2 -> MaterialTheme.colorScheme.error
+            segmentCount > 1 -> MaterialTheme.colorScheme.secondary
+            else             -> MaterialTheme.colorScheme.onSurfaceVariant
         }
     )
 
@@ -232,21 +261,30 @@ private fun EditTemplateSheet(
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
                 placeholder = { Text("Type your message...", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    focusedBorderColor   = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = MaterialTheme.colorScheme.outline
                 ),
                 shape = AderaShapes.small
             )
-            
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Signature preview
+            Text(
+                text = "+ By Adera SMS (appended automatically)",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Surface(
                     shape = RoundedCornerShape(percent = 50),
@@ -259,16 +297,17 @@ private fun EditTemplateSheet(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                     )
                 }
-                
+
+                // Item 10 + 14: Show total chars including signature and correct SMS segment count
                 Text(
-                    text = "${text.length} / $SMS_MAX_CHARS chars",
+                    text = "$fullLength chars • $segmentCount SMS",
                     style = MaterialTheme.typography.bodySmall,
                     color = counterColor
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             Button(
                 onClick = { if (text.isNotBlank()) onSave(text.trim()) },
                 enabled = text.isNotBlank(),

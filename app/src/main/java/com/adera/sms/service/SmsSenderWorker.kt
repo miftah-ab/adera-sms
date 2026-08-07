@@ -16,6 +16,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.adera.sms.analytics.AnalyticsManager
 import com.adera.sms.data.AppDatabase
 import com.adera.sms.data.entity.CallStatus
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -26,18 +27,17 @@ import kotlin.coroutines.resume
 /**
  * WorkManager worker responsible for sending the auto-reply SMS and updating the log entry.
  *
- * Retry policy (spec §12.7): one retry after 30 seconds (LINEAR backoff).
+ * Retry policy: one retry after 30 seconds (LINEAR backoff).
  * If the second attempt also fails, the log entry is marked [CallStatus.FAILED].
  *
- * SIM selection — three-level fallback (spec §12.7):
- *   1. Use the subscription ID from the missed call (most accurate)
- *   2. Use the device's default SMS subscription ID
- *   3. Use SmsManager.getDefault() — last resort, logs a warning
+ * SIM selection (Item 4): STRICT — only uses the exact subscription ID from the missed call.
+ * If the subscription ID is not valid, the entry is logged as FAILED and no SMS is sent.
+ * There is NO fallback to a default SIM or the system default SmsManager.
  *
- * SecurityException (SEND_SMS revoked by user after grant): treated as hard failure.
- * No retry — the user must go to system settings and restore the permission, where
- * the Home screen will show a persistent warning banner (runtime permission recovery,
- * spec §12.7).
+ * Signature (Item 10): " By Adera SMS" is appended to every outgoing message at send time.
+ * This is not part of the editable template.
+ *
+ * SecurityException (SEND_SMS revoked): treated as hard failure — no retry.
  */
 class SmsSenderWorker(
     context: Context,
@@ -46,6 +46,7 @@ class SmsSenderWorker(
 
     companion object {
         private const val TAG = "AderaSMS"
+        const val SIGNATURE = " By Adera SMS"
 
         const val KEY_CALLER_NUMBER     = "caller_number"
         const val KEY_SUBSCRIPTION_ID   = "subscription_id"
@@ -82,16 +83,27 @@ class SmsSenderWorker(
             return Result.failure()
         }
 
-        Log.i(TAG, "SmsSenderWorker: sending to ${callerNumber.take(3)}***, attempt ${runAttemptCount + 1}")
-
         val db = AppDatabase.getInstance(applicationContext)
 
+        // ITEM 4: Strict SIM matching — if subscription ID is not valid, fail immediately.
+        // Do NOT fall back to a default or system SIM.
+        if (subscriptionId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            Log.e(TAG, "SmsSenderWorker: subscription ID is INVALID — cannot determine which SIM received the call. Marking FAILED.")
+            if (logEntryId != -1) db.callLogDao().updateStatus(logEntryId, CallStatus.FAILED)
+            return Result.failure()
+        }
+
+        // ITEM 10: Append mandatory signature
+        val fullMessage = templateText + SIGNATURE
+
+        Log.i(TAG, "SmsSenderWorker: sending to ${callerNumber.take(3)}***, subId=$subscriptionId, attempt ${runAttemptCount + 1}")
+
         return try {
-            val smsManager = selectSmsManager(subscriptionId)
-            
+            val smsManager = resolveSmsManager(subscriptionId)
+
             suspendCancellableCoroutine { continuation ->
                 val intentAction = "com.adera.sms.SMS_SENT_${UUID.randomUUID()}"
-                
+
                 val sentIntent = PendingIntent.getBroadcast(
                     applicationContext,
                     0,
@@ -103,18 +115,10 @@ class SmsSenderWorker(
                     override fun onReceive(context: Context, intent: Intent) {
                         try {
                             applicationContext.unregisterReceiver(this)
-                        } catch (e: Exception) {
-                            // Already unregistered
-                        }
-                        
+                        } catch (e: Exception) { /* already unregistered */ }
+
                         if (resultCode == Activity.RESULT_OK) {
                             Log.i(TAG, "SMS sent successfully (attempt ${runAttemptCount + 1})")
-                            if (logEntryId != -1) {
-                                // DB ops run on Room's dispatcher, so we don't need a specific scope here
-                                // wait, we shouldn't block the receiver thread, but updateStatus is suspend
-                                // We can use GlobalScope, but better to do it synchronously if possible, 
-                                // wait, updateStatus is a suspend function. Let's just return Result and do DB ops after.
-                            }
                             if (continuation.isActive) continuation.resume(Result.success())
                         } else {
                             Log.e(TAG, "SMS send failed with resultCode: $resultCode (attempt ${runAttemptCount + 1})")
@@ -122,7 +126,7 @@ class SmsSenderWorker(
                                 Log.d(TAG, "Scheduling one retry in ~30 seconds")
                                 if (continuation.isActive) continuation.resume(Result.retry())
                             } else {
-                                Log.e(TAG, "SMS failed after retry - marking FAILED")
+                                Log.e(TAG, "SMS failed after retry — marking FAILED")
                                 if (continuation.isActive) continuation.resume(Result.failure())
                             }
                         }
@@ -137,24 +141,20 @@ class SmsSenderWorker(
                 }
 
                 continuation.invokeOnCancellation {
-                    try {
-                        applicationContext.unregisterReceiver(receiver)
-                    } catch (e: Exception) {}
+                    try { applicationContext.unregisterReceiver(receiver) } catch (e: Exception) {}
                 }
 
                 try {
-                    smsManager.sendTextMessage(callerNumber, null, templateText, sentIntent, null)
+                    smsManager.sendTextMessage(callerNumber, null, fullMessage, sentIntent, null)
                 } catch (e: Exception) {
-                    try {
-                        applicationContext.unregisterReceiver(receiver)
-                    } catch (ex: Exception) {}
+                    try { applicationContext.unregisterReceiver(receiver) } catch (ex: Exception) {}
                     if (continuation.isActive) continuation.resume(Result.failure())
                 }
             }.let { result ->
-                // Now we update the DB based on the result
                 when (result) {
                     is Result.Success -> {
                         if (logEntryId != -1) db.callLogDao().updateStatus(logEntryId, CallStatus.SENT)
+                        AnalyticsManager.autoReplySent(applicationContext)
                     }
                     is Result.Failure -> {
                         if (logEntryId != -1) db.callLogDao().updateStatus(logEntryId, CallStatus.FAILED)
@@ -165,8 +165,7 @@ class SmsSenderWorker(
             }
 
         } catch (e: SecurityException) {
-            // SEND_SMS was revoked — no point retrying. The Home screen warning will prompt
-            // the user to re-grant the permission.
+            // SEND_SMS was revoked — no point retrying.
             Log.e(TAG, "SEND_SMS permission denied — user must re-grant in system settings", e)
             if (logEntryId != -1) db.callLogDao().updateStatus(logEntryId, CallStatus.FAILED)
             Result.failure()
@@ -185,37 +184,16 @@ class SmsSenderWorker(
     }
 
     /**
-     * Three-level SIM selection fallback chain (spec §12.7).
-     * Logs a warning at each fallback level so the Activity Log can surface SIM issues.
+     * ITEM 4: Uses ONLY the exact subscription ID that received the call.
+     * No fallback to a default SIM.
      */
     @Suppress("DEPRECATION")
-    private fun selectSmsManager(subscriptionId: Int): SmsManager {
-        // Level 1: Use the SIM that received the missed call
-        if (subscriptionId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-            Log.d(TAG, "SIM: using call subscription $subscriptionId")
-            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-                applicationContext.getSystemService(SmsManager::class.java)
-                    .createForSubscriptionId(subscriptionId)
-            else
-                SmsManager.getSmsManagerForSubscriptionId(subscriptionId)
-        }
-
-        // Level 2: Device default SMS SIM
-        val defaultSubId = SmsManager.getDefaultSmsSubscriptionId()
-        if (defaultSubId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-            Log.w(TAG, "SIM: call SIM unknown → falling back to default SMS sub $defaultSubId")
-            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-                applicationContext.getSystemService(SmsManager::class.java)
-                    .createForSubscriptionId(defaultSubId)
-            else
-                SmsManager.getSmsManagerForSubscriptionId(defaultSubId)
-        }
-
-        // Level 3: System default — OEM may choose any available SIM
-        Log.w(TAG, "SIM: no subscription ID available → using system default SmsManager")
+    private fun resolveSmsManager(subscriptionId: Int): SmsManager {
+        Log.d(TAG, "SIM: using call subscription $subscriptionId")
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
             applicationContext.getSystemService(SmsManager::class.java)
+                .createForSubscriptionId(subscriptionId)
         else
-            SmsManager.getDefault()
+            SmsManager.getSmsManagerForSubscriptionId(subscriptionId)
     }
 }

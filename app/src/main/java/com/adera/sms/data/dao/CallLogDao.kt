@@ -14,6 +14,9 @@ interface CallLogDao {
     @Query("SELECT * FROM call_log_entries ORDER BY timestamp DESC")
     fun observeAllEntries(): Flow<List<CallLogEntry>>
 
+    @Query("SELECT * FROM call_log_entries ORDER BY timestamp DESC LIMIT :limit")
+    fun observeRecent(limit: Int): Flow<List<CallLogEntry>>
+
     // ── One-shot reads ────────────────────────────────────────────────────────
 
     @Query("SELECT * FROM call_log_entries ORDER BY timestamp DESC")

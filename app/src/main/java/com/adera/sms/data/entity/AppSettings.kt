@@ -24,11 +24,12 @@ data class AppSettings(
     val quietHoursStart: Int = 0,       // Minutes since midnight; 0 = disabled (when == end)
     val quietHoursEnd: Int = 0,
 
-    val analyticsOptIn: Boolean = false, // Explicit opt-in; never assumed true
+    // Renamed from analyticsOptIn in Migration(2, 3). Firebase Analytics is always active.
+    val analyticsEnabled: Boolean = true,
 
     val lastUpdateCheck: Long = 0L,     // Epoch ms of last version.json fetch
 
     val consentGiven: Boolean = false, // False = show privacy gate on next launch, hard stop
-    
+
     val consentTimestamp: Long = 0L     // Epoch ms of when consent was given
 )

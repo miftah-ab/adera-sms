@@ -35,7 +35,4 @@ interface SettingsDao {
 
     @Query("UPDATE app_settings SET lastUpdateCheck = :timestamp WHERE id = 1")
     suspend fun setLastUpdateCheck(timestamp: Long)
-
-    @Query("UPDATE app_settings SET analyticsOptIn = :optIn WHERE id = 1")
-    suspend fun setAnalyticsOptIn(optIn: Boolean)
 }

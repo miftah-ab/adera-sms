@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "838640106507",
+    "project_id": "adera-sms",
+    "storage_bucket": "adera-sms.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:838640106507:android:6b16ec3773af925bd79b0e",
+        "android_client_info": {
+          "package_name": "com.adera.sms"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCijFE6n9tbwzQRQVms0CYf-RQOtmjWDNI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

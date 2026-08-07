@@ -1,52 +1,59 @@
 package com.adera.sms.analytics
 
+import android.content.Context
+import android.os.Bundle
 import android.util.Log
+import com.google.firebase.analytics.FirebaseAnalytics
 
 /**
- * Analytics wrapper (spec §12.5, Step 11 — opt-in only).
+ * Mandatory analytics wrapper using Firebase Analytics.
  *
- * This is a STUB for v1. It logs events to Logcat only.
+ * Analytics is always active — no user-facing opt-in or opt-out exists anywhere in the app.
+ * PRIVACY BOUNDARY: Never log phone numbers, message content, or any call data through
+ * this class. Events track only behavioral signals (toggle state, completion, etc.).
  *
- * When you're ready to add Firebase Analytics:
- *   1. Create a Firebase project and download google-services.json → app/
- *   2. Add `com.google.gms:google-services` and `firebase-analytics-ktx` to the build
- *   3. Replace the Log calls below with FirebaseAnalytics.getInstance(context).logEvent(...)
- *   4. The opt-in gate (analyticsOptIn check) must stay — never call Firebase without consent.
- *
- * Events to track (per spec §10 success metrics):
- *   - onboarding_completed
- *   - auto_reply_toggled (enabled: Boolean)
- *   - sms_sent
- *   - sms_failed
- *   - template_changed
+ * Tracked events (per product spec):
+ *   - app_open
+ *   - onboarding_complete
+ *   - autoreply_sent
+ *   - template_edited
+ *   - toggle_changed (param: enabled Boolean)
  */
 object AnalyticsManager {
 
     private const val TAG = "AderaSMS_Analytics"
 
-    /**
-     * Log an analytics event.
-     * [optIn] MUST be true (from AppSettings.analyticsOptIn) before this is called.
-     * Call sites are responsible for checking opt-in — this method does NOT enforce it
-     * as a second gate because that would hide bugs where opt-in is not being checked.
-     */
-    fun logEvent(event: String, params: Map<String, Any> = emptyMap()) {
-        // Stub: emit to Logcat only in v1
-        Log.d(TAG, "Event: $event | params: $params")
-        // TODO (Step 11 full implementation): FirebaseAnalytics.getInstance(ctx).logEvent(event, bundle)
+    // ── Event name constants ──────────────────────────────────────────────────
+
+    const val EVENT_APP_OPEN           = "app_open"
+    const val EVENT_ONBOARDING_COMPLETE = "onboarding_complete"
+    const val EVENT_AUTOREPLY_SENT     = "autoreply_sent"
+    const val EVENT_TEMPLATE_EDITED    = "template_edited"
+    const val EVENT_TOGGLE_CHANGED     = "toggle_changed"
+
+    // ── Core logging ──────────────────────────────────────────────────────────
+
+    fun logEvent(context: Context, eventName: String, params: Bundle? = null) {
+        try {
+            FirebaseAnalytics.getInstance(context).logEvent(eventName, params)
+            Log.d(TAG, "Analytics event: $eventName")
+        } catch (e: Exception) {
+            Log.w(TAG, "Analytics logEvent failed for $eventName: ${e.message}")
+        }
     }
 
     // ── Convenience methods ───────────────────────────────────────────────────
 
-    fun onboardingCompleted() = logEvent("onboarding_completed")
+    fun appOpen(context: Context) = logEvent(context, EVENT_APP_OPEN)
 
-    fun autoReplyToggled(enabled: Boolean) =
-        logEvent("auto_reply_toggled", mapOf("enabled" to enabled))
+    fun onboardingComplete(context: Context) = logEvent(context, EVENT_ONBOARDING_COMPLETE)
 
-    fun smsSent() = logEvent("sms_sent")
+    fun autoReplySent(context: Context) = logEvent(context, EVENT_AUTOREPLY_SENT)
 
-    fun smsFailed(reason: String) = logEvent("sms_failed", mapOf("reason" to reason))
+    fun templateEdited(context: Context) = logEvent(context, EVENT_TEMPLATE_EDITED)
 
-    fun templateChanged(language: String, isPreset: Boolean) =
-        logEvent("template_changed", mapOf("language" to language, "is_preset" to isPreset))
+    fun toggleChanged(context: Context, enabled: Boolean) {
+        val bundle = Bundle().apply { putBoolean("enabled", enabled) }
+        logEvent(context, EVENT_TOGGLE_CHANGED, bundle)
+    }
 }

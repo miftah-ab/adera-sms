@@ -2,6 +2,9 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
+    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
+    id("com.google.firebase.firebase-perf")
 }
 
 android {
@@ -12,8 +15,8 @@ android {
         applicationId  = "com.adera.sms"
         minSdk         = 26   // Android 8.0 Oreo — covers Tecno/Infinix budget devices in Ethiopia
         targetSdk      = 34   // Android 14
-        versionCode    = 2    // INCREMENT this for every release; used by forced-update mechanism (spec 12.6)
-        versionName    = "1.0.1"
+        versionCode    = 3    // INCREMENT this for every release; used by forced-update mechanism (spec 12.6)
+        versionName    = "1.0.2"
 
         // Export Room schema for migration history tracking
         ksp {
@@ -122,4 +125,10 @@ dependencies {
 
     // Coroutines — service scope, DAO suspend functions, worker async
     implementation(libs.kotlinx.coroutines.android)
+
+    // Firebase
+    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-crashlytics")
+    implementation("com.google.firebase:firebase-perf")
 }

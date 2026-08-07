@@ -1,5 +1,7 @@
 package com.adera.sms.ui.settings
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,13 +15,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.core.content.FileProvider
 import com.adera.sms.BuildConfig
 import com.adera.sms.ui.theme.AderaShapes
 import com.adera.sms.update.UpdateStatus
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,6 +35,8 @@ fun SettingsScreen(
     onForceUpdate: (String) -> Unit,
     viewModel: SettingsViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val updateStatus by viewModel.updateStatus.collectAsStateWithLifecycle()
     val isChecking by viewModel.isCheckingUpdate.collectAsStateWithLifecycle()
@@ -91,7 +100,7 @@ fun SettingsScreen(
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
         ) {
-            
+
             // APP SETTINGS
             SectionTitle("App Settings")
             SettingsCard {
@@ -101,44 +110,50 @@ fun SettingsScreen(
                     subtitle = "Pause replies at night",
                     onClick = { showQuietHoursSheet = true }
                 )
-                Divider(modifier = Modifier.padding(start = 56.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            }
+
+            // SHARE APP
+            SectionTitle("Share")
+            SettingsCard {
                 SettingsRow(
-                    icon = Icons.Rounded.SimCard,
-                    title = "SIM Selection",
-                    subtitle = "Choose which SIM sends replies",
-                    onClick = { /* TODO: Need to show sheet, but since it's now in HomeScreen, 
-                                 maybe we need to expose it here too. For now we just implement the UI. */ }
+                    icon = Icons.Rounded.Share,
+                    title = "Share App",
+                    subtitle = "Send the APK to another device via Xender, SHAREit or Bluetooth",
+                    onClick = {
+                        scope.launch {
+                            try {
+                                val uri = withContext(Dispatchers.IO) {
+                                    val src = java.io.File(context.applicationInfo.sourceDir)
+                                    val dst = java.io.File(context.cacheDir, "AderaSMS.apk")
+                                    src.copyTo(dst, overwrite = true)
+                                    FileProvider.getUriForFile(
+                                        context,
+                                        "${context.packageName}.fileprovider",
+                                        dst
+                                    )
+                                }
+                                val intent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "application/vnd.android.package-archive"
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(Intent.createChooser(intent, "Share Adera SMS"))
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+                    }
                 )
             }
-            
+
             // PRIVACY & DATA
-            SectionTitle("Privacy & Data")
+            SectionTitle("Privacy and Data")
             SettingsCard {
                 SettingsRow(
                     icon = Icons.Rounded.PrivacyTip,
                     title = "Privacy Policy",
                     subtitle = "Read how your data is handled locally"
                 )
-                Divider(modifier = Modifier.padding(start = 56.dp), color = MaterialTheme.colorScheme.outlineVariant)
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Rounded.Analytics, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Anonymous Analytics", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-                        Text("Help us improve Adera SMS", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Switch(
-                        checked = settings?.analyticsOptIn == true,
-                        onCheckedChange = { viewModel.setAnalyticsOptIn(it) },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.secondary,
-                            checkedTrackColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)
-                        )
-                    )
-                }
                 Divider(modifier = Modifier.padding(start = 56.dp), color = MaterialTheme.colorScheme.outlineVariant)
                 SettingsRow(
                     icon = Icons.Rounded.DeleteForever,
@@ -149,7 +164,7 @@ fun SettingsScreen(
                     onClick = { showClearDataDialog = true }
                 )
             }
-            
+
             // ABOUT
             SectionTitle("About")
             SettingsCard {
@@ -159,14 +174,20 @@ fun SettingsScreen(
                     subtitle = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
                 )
                 Divider(modifier = Modifier.padding(start = 56.dp), color = MaterialTheme.colorScheme.outlineVariant)
-                
+
+                // Check for Updates row — shows real network result
                 val updateSubtitle = when (val s = updateStatus) {
                     is UpdateStatus.UpdateAvailable -> "Update available: ${s.info.releaseNotes}"
-                    is UpdateStatus.UpToDate -> "You're on the latest version"
-                    is UpdateStatus.Error -> "Check failed: ${s.message}"
-                    else -> "Check for updates"
+                    is UpdateStatus.UpToDate -> "You are up to date"
+                    is UpdateStatus.Error -> "Check failed. Try again when you have internet."
+                    is UpdateStatus.ForceUpdate -> "Critical update required"
+                    null -> "Tap to check for updates"
                 }
-                val updateColor = if (updateStatus is UpdateStatus.UpdateAvailable) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant
+                val updateColor = when (updateStatus) {
+                    is UpdateStatus.UpdateAvailable -> MaterialTheme.colorScheme.secondary
+                    is UpdateStatus.Error -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                }
 
                 Row(
                     modifier = Modifier
@@ -183,16 +204,46 @@ fun SettingsScreen(
                     }
                     if (isChecking) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
+                    } else if (updateStatus is UpdateStatus.UpdateAvailable) {
+                        val downloadUrl = (updateStatus as UpdateStatus.UpdateAvailable).info.downloadUrl
+                        TextButton(onClick = {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl)))
+                        }) {
+                            Text("Download", color = MaterialTheme.colorScheme.secondary)
+                        }
                     }
                 }
+
+                Divider(modifier = Modifier.padding(start = 56.dp), color = MaterialTheme.colorScheme.outlineVariant)
+
+                // Support contact row
+                SettingsRow(
+                    icon = Icons.Rounded.SupportAgent,
+                    title = "Contact Support",
+                    subtitle = "Reach us on Telegram or email",
+                    onClick = {
+                        val contact = "REPLACE_WITH_SUPPORT_CONTACT"
+                        try {
+                            // Try as Telegram deep link first, then fall back to email intent
+                            val intent = if (contact.startsWith("@")) {
+                                Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/${contact.removePrefix("@")}"))
+                            } else {
+                                Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$contact"))
+                            }
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                )
             }
-            
+
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
-    
+
     if (showQuietHoursSheet) {
-        com.adera.sms.ui.settings.QuietHoursSheet(onDismissRequest = { showQuietHoursSheet = false })
+        QuietHoursSheet(onDismissRequest = { showQuietHoursSheet = false })
     }
 }
 

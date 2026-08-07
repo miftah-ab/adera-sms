@@ -1,25 +1,24 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Adera SMS</string>
 
     <!-- =====================================================================
          Foreground service notification
-         Spec 12.7: "Must communicate active protection, not just 'app is running.'"
+         Item 12: No dash or hyphen. Dismissible on Android 13+.
          ===================================================================== -->
     <string name="notification_channel_service_name">Adera SMS Service</string>
-    <string name="notification_channel_service_description">Persistent notification confirming auto-reply protection is active. Low priority â€” does not make sound or vibrate.</string>
+    <string name="notification_channel_service_description">Persistent notification confirming auto reply protection is active. Low priority and does not make sound or vibrate.</string>
     <string name="notification_service_title">Adera SMS is active</string>
-    <string name="notification_service_text">Auto-reply protection enabled â€” you\'re covered</string>
+    <string name="notification_service_text">Auto reply protection is on</string>
 
     <!-- =====================================================================
-         Preset message templates â€” English (spec 12.8: English + Amharic only)
+         Preset message templates — English (English + Amharic only)
          These are seeded into Room on first launch by AderaSmsApplication.
          Template 1 is the app default (isDefault=true).
          ===================================================================== -->
 
     <!-- =====================================================================
-         Activity Log status labels (used in Step 7 UI)
+         Activity Log status labels
          ===================================================================== -->
 
-    <!-- Minimal test screen (Steps 1â€“3 stub only â€” replaced in Step 5) -->
 </resources>

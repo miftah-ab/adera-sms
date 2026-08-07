@@ -56,10 +56,6 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun setAnalyticsOptIn(optIn: Boolean) {
-        viewModelScope.launch { db.settingsDao().setAnalyticsOptIn(optIn) }
-    }
-
     fun clearAllData() {
         viewModelScope.launch(Dispatchers.IO) {
             db.clearAllTables()

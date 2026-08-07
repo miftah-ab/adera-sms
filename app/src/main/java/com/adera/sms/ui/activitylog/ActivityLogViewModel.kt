@@ -5,13 +5,21 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.adera.sms.data.AppDatabase
 import com.adera.sms.data.entity.CallLogEntry
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 
 class ActivityLogViewModel(app: Application) : AndroidViewModel(app) {
     private val db = AppDatabase.getInstance(app)
 
-    val entries: StateFlow<List<CallLogEntry>> = db.callLogDao().observeAllEntries()
+    private val _allEntries: StateFlow<List<CallLogEntry>> = db.callLogDao().observeAllEntries()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    // Item 8: Search query state
+    val searchQuery = MutableStateFlow("")
+
+    // Filtered list: when query is empty, returns all entries; otherwise filters by callerNumber
+    val entries: StateFlow<List<CallLogEntry>> = combine(_allEntries, searchQuery) { entries, query ->
+        if (query.isBlank()) entries
+        else entries.filter { it.callerNumber.contains(query.trim(), ignoreCase = true) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 }

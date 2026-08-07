@@ -140,7 +140,8 @@ class CallMonitorService : Service() {
             .setContentText(getString(R.string.notification_service_text))
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(tapIntent)
-            .setOngoing(true)
+            // setOngoing(true) intentionally NOT set — on Android 13+ the user may swipe
+            // this notification away while the foreground service continues running.
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .build()

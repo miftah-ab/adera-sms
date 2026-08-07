@@ -91,7 +91,7 @@ fun OnboardingScreen(onOnboardingComplete: () -> Unit) {
             Spacer(modifier = Modifier.height(48.dp))
 
             Text(
-                text = "Adera SMS replies to missed calls automatically — entirely on your phone.",
+                text = "Adera SMS replies to missed calls automatically, entirely on your phone.",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center,
@@ -169,6 +169,7 @@ fun OnboardingScreen(onOnboardingComplete: () -> Unit) {
                         scope.launch {
                             val db = AppDatabase.getInstance(context)
                             db.settingsDao().markConsentGiven(System.currentTimeMillis())
+                            com.adera.sms.analytics.AnalyticsManager.onboardingComplete(context)
                             onOnboardingComplete()
                         }
                     }

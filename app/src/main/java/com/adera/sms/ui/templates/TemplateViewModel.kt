@@ -27,6 +27,7 @@ class TemplateViewModel(app: Application) : AndroidViewModel(app) {
                 MessageTemplate(text = text, language = language,
                     isDefault = false, isPreset = false)
             )
+            com.adera.sms.analytics.AnalyticsManager.templateEdited(getApplication())
         }
     }
 
