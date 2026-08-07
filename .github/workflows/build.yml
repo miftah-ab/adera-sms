@@ -96,7 +96,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
-          name: AderaSMS-release-${{ github.ref_name }}-signed
+          name: Adera SMS ${{ github.ref_name }}
           path: "app/build/outputs/apk/release/Adera SMS.apk"
           retention-days: 90
 
