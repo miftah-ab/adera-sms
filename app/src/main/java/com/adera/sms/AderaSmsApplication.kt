@@ -68,8 +68,9 @@ class AderaSmsApplication : Application() {
 
                 // Seed templates
                 if (db.templateDao().getAllTemplates().isEmpty()) {
-                    db.templateDao().insertAll(buildPresetTemplates())
-                    Log.i(TAG, "Database seeded with ${buildPresetTemplates().size} preset templates")
+                    val presets = buildPresetTemplates()
+                    db.templateDao().insertAll(presets)
+                    Log.i(TAG, "Database seeded with ${presets.size} preset templates")
                 }
 
                 // Ensure settings row exists

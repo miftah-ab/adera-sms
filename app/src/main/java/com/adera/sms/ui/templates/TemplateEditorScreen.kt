@@ -163,14 +163,20 @@ fun TemplateEditorScreen(
             template = templateToEdit,
             language = selectedLang,
             onSave = { text ->
-                if (templateToEdit == null) {
+                val current = templateToEdit
+                if (current == null) {
                     viewModel.saveCustomTemplate(text, selectedLang)
                 } else {
-                    viewModel.saveCustomTemplate(text, selectedLang)
+                    // Fix #5: update the existing row — do NOT insert a duplicate
+                    viewModel.updateCustomTemplate(current.copy(text = text.trim()))
                 }
                 showEditSheet = false
+                templateToEdit = null
             },
-            onDismiss = { showEditSheet = false }
+            onDismiss = {
+                showEditSheet = false
+                templateToEdit = null
+            }
         )
     }
 }

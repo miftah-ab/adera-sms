@@ -43,6 +43,7 @@ fun SettingsScreen(
 
     var showClearDataDialog by remember { mutableStateOf(false) }
     var showQuietHoursSheet by remember { mutableStateOf(false) }
+    var showPrivacySheet    by remember { mutableStateOf(false) }
 
     LaunchedEffect(updateStatus) {
         val s = updateStatus
@@ -74,6 +75,23 @@ fun SettingsScreen(
                 }
             }
         )
+    }
+
+    if (showPrivacySheet) {
+        androidx.compose.material3.ModalBottomSheet(onDismissRequest = { showPrivacySheet = false }) {
+            Column(modifier = Modifier.padding(24.dp).padding(bottom = 32.dp)) {
+                Text("Privacy Policy", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    "Adera SMS operates entirely on your device. We do not collect, transmit, or store your call logs, messages, or contacts on any external servers. Your data remains yours.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(32.dp))
+                Button(onClick = { showPrivacySheet = false }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Close")
+                }
+            }
+        }
     }
 
     Scaffold(
@@ -152,7 +170,8 @@ fun SettingsScreen(
                 SettingsRow(
                     icon = Icons.Rounded.PrivacyTip,
                     title = "Privacy Policy",
-                    subtitle = "Read how your data is handled locally"
+                    subtitle = "Read how your data is handled locally",
+                    onClick = { showPrivacySheet = true }
                 )
                 Divider(modifier = Modifier.padding(start = 56.dp), color = MaterialTheme.colorScheme.outlineVariant)
                 SettingsRow(
@@ -222,15 +241,17 @@ fun SettingsScreen(
                     title = "Contact Support",
                     subtitle = "Reach us on Telegram or email",
                     onClick = {
-                        val contact = "REPLACE_WITH_SUPPORT_CONTACT"
+                        // TODO: Replace with your real Telegram handle (e.g. "@AderaSMS") or email
+                        val contact = "support@adera-sms.com"
                         try {
-                            // Try as Telegram deep link first, then fall back to email intent
                             val intent = if (contact.startsWith("@")) {
                                 Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/${contact.removePrefix("@")}"))
                             } else {
                                 Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$contact"))
                             }
                             context.startActivity(intent)
+                        } catch (e: android.content.ActivityNotFoundException) {
+                            android.widget.Toast.makeText(context, "No app found to handle this. Contact: $contact", android.widget.Toast.LENGTH_LONG).show()
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }

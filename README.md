@@ -303,8 +303,7 @@ Adera SMS is **100% offline** for its core function. Here is exactly what data i
 
 | Data | Stored | Where | Why |
 |---|---|---|---|
-| Full phone number | ❌ Never | — | Privacy — only exists transiently in memory |
-| Masked number (e.g. `091•••42`) | ✅ Yes | Local SQLite only | Displayed in Activity Log |
+| Full phone number | ✅ Yes | Local SQLite only | Displayed in full in Activity Log and Home screen |
 | SHA-256 hash of full number | ✅ Yes | Local SQLite only | Per-number 10-minute cooldown logic |
 | SMS template text | ✅ Yes | Local SQLite only | User-configured |
 | Settings (toggle, quiet hours) | ✅ Yes | Local SQLite only | App configuration |

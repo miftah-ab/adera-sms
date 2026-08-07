@@ -18,7 +18,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -27,7 +26,6 @@ import com.adera.sms.data.AppDatabase
 import com.adera.sms.ui.navigation.AderaNavGraph
 import com.adera.sms.ui.navigation.Screen
 import com.adera.sms.ui.theme.AderaSmsTheme
-import kotlinx.coroutines.launch
 
 /**
  * Single Activity — hosts the entire Compose navigation graph.
@@ -49,16 +47,14 @@ class MainActivity : ComponentActivity() {
 
                 // Determine start destination from DB before rendering NavHost
                 LaunchedEffect(Unit) {
-                    lifecycleScope.launch {
-                        val db       = AppDatabase.getInstance(applicationContext)
-                        val settings = db.settingsDao().getSettings()
-                        startDest = if (settings?.consentGiven == true)
-                            Screen.Home.route
-                        else
-                            Screen.Onboarding.route
-                        // Track app open (mandatory, always fires)
-                        com.adera.sms.analytics.AnalyticsManager.appOpen(applicationContext)
-                    }
+                    val db       = AppDatabase.getInstance(applicationContext)
+                    val settings = db.settingsDao().getSettings()
+                    startDest = if (settings?.consentGiven == true)
+                        Screen.Home.route
+                    else
+                        Screen.Onboarding.route
+                    // Track app open (mandatory, always fires)
+                    com.adera.sms.analytics.AnalyticsManager.appOpen(applicationContext)
                 }
 
                 if (startDest != null) {

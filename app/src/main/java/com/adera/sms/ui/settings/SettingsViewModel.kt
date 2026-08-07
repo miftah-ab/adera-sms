@@ -59,7 +59,8 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     fun clearAllData() {
         viewModelScope.launch(Dispatchers.IO) {
             db.clearAllTables()
-            // Setting up initial DB state if needed can be done here or on restart
+            // Re-seed settings row so the app is not permanently broken
+            db.settingsDao().upsertSettings(AppSettings())
         }
     }
 }

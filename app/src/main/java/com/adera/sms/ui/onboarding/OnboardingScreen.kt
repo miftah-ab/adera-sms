@@ -166,11 +166,13 @@ fun OnboardingScreen(onOnboardingComplete: () -> Unit) {
             Button(
                 onClick = {
                     if (agreed) {
-                        scope.launch {
+                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
                             val db = AppDatabase.getInstance(context)
                             db.settingsDao().markConsentGiven(System.currentTimeMillis())
                             com.adera.sms.analytics.AnalyticsManager.onboardingComplete(context)
-                            onOnboardingComplete()
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                onOnboardingComplete()
+                            }
                         }
                     }
                 },

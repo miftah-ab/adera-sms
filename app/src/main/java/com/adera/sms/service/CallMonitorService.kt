@@ -37,6 +37,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import java.security.MessageDigest
 import java.util.Calendar
 import kotlin.coroutines.resume
@@ -241,12 +242,12 @@ class CallMonitorService : Service() {
     // ── Core missed-call processing ───────────────────────────────────────────
 
     private suspend fun processMissedCall(directNumber: String?, subId: Int) {
-        val callerNumber = directNumber ?: queryCallLogForMissedNumber()
-
-        if (callerNumber.isNullOrBlank()) {
-            Log.w(TAG, "Could not determine caller number — skipping auto-reply")
-            return
-        }
+        val callerNumber = directNumber
+            ?: withTimeoutOrNull(5_000L) { queryCallLogForMissedNumber() }
+            ?: run {
+                Log.w(TAG, "processMissedCall: call log not updated within 5 s — skipping auto-reply")
+                return
+            }
 
         val settings = database.settingsDao().getSettings() ?: run {
             Log.e(TAG, "Settings not found in DB — skipping"); return
@@ -364,15 +365,6 @@ class CallMonitorService : Service() {
                 status             = status
             )
         )
-    }
-
-    private fun maskNumber(n: String): String {
-        val clean = n.filter { it.isDigit() || it == '+' }
-        return when {
-            clean.length >= 8 -> "${clean.take(3)}•••${clean.takeLast(2)}"
-            clean.length >= 5 -> "${clean.take(2)}•••${clean.takeLast(2)}"
-            else              -> "•••••"
-        }
     }
 
     private fun sha256(input: String): String =

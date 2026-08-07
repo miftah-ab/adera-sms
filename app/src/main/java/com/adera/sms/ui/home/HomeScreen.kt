@@ -354,8 +354,14 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { 
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("REPLACE_WITH_YE_BUNA_URL"))) 
+                    .clickable {
+                        // TODO: Replace with your real Ye Buna campaign URL when ready
+                        val yebunaUrl = "https://yebuna.com/adera-sms"
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(yebunaUrl)))
+                        } catch (e: android.content.ActivityNotFoundException) {
+                            android.widget.Toast.makeText(context, "No browser found to open the link.", android.widget.Toast.LENGTH_SHORT).show()
+                        }
                     }
                     .padding(vertical = 16.dp),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center

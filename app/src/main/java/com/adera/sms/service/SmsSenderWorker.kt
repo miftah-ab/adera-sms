@@ -65,7 +65,7 @@ class SmsSenderWorker(
                     KEY_CALLER_NUMBER     to callerNumber,
                     KEY_SUBSCRIPTION_ID   to subscriptionId,
                     KEY_TEMPLATE_TEXT     to templateText,
-                    KEY_CALL_LOG_ENTRY_ID to logEntryId.toInt()
+                    KEY_CALL_LOG_ENTRY_ID to logEntryId
                 )
             )
             .setBackoffCriteria(BackoffPolicy.LINEAR, 30, TimeUnit.SECONDS)
@@ -76,7 +76,7 @@ class SmsSenderWorker(
         val callerNumber   = inputData.getString(KEY_CALLER_NUMBER)
         val subscriptionId = inputData.getInt(KEY_SUBSCRIPTION_ID, SubscriptionManager.INVALID_SUBSCRIPTION_ID)
         val templateText   = inputData.getString(KEY_TEMPLATE_TEXT)
-        val logEntryId     = inputData.getInt(KEY_CALL_LOG_ENTRY_ID, -1)
+        val logEntryId     = inputData.getLong(KEY_CALL_LOG_ENTRY_ID, -1L)
 
         if (callerNumber.isNullOrBlank() || templateText.isNullOrBlank()) {
             Log.e(TAG, "SmsSenderWorker: missing required input — bug in CallMonitorService")
@@ -89,7 +89,7 @@ class SmsSenderWorker(
         // Do NOT fall back to a default or system SIM.
         if (subscriptionId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
             Log.e(TAG, "SmsSenderWorker: subscription ID is INVALID — cannot determine which SIM received the call. Marking FAILED.")
-            if (logEntryId != -1) db.callLogDao().updateStatus(logEntryId, CallStatus.FAILED)
+            if (logEntryId != -1L) db.callLogDao().updateStatus(logEntryId, CallStatus.FAILED)
             return Result.failure()
         }
 
@@ -153,11 +153,11 @@ class SmsSenderWorker(
             }.let { result ->
                 when (result) {
                     is Result.Success -> {
-                        if (logEntryId != -1) db.callLogDao().updateStatus(logEntryId, CallStatus.SENT)
+                        if (logEntryId != -1L) db.callLogDao().updateStatus(logEntryId, CallStatus.SENT)
                         AnalyticsManager.autoReplySent(applicationContext)
                     }
                     is Result.Failure -> {
-                        if (logEntryId != -1) db.callLogDao().updateStatus(logEntryId, CallStatus.FAILED)
+                        if (logEntryId != -1L) db.callLogDao().updateStatus(logEntryId, CallStatus.FAILED)
                     }
                     else -> {}
                 }
@@ -167,7 +167,7 @@ class SmsSenderWorker(
         } catch (e: SecurityException) {
             // SEND_SMS was revoked — no point retrying.
             Log.e(TAG, "SEND_SMS permission denied — user must re-grant in system settings", e)
-            if (logEntryId != -1) db.callLogDao().updateStatus(logEntryId, CallStatus.FAILED)
+            if (logEntryId != -1L) db.callLogDao().updateStatus(logEntryId, CallStatus.FAILED)
             Result.failure()
 
         } catch (e: Exception) {
@@ -177,7 +177,7 @@ class SmsSenderWorker(
                 Result.retry()
             } else {
                 Log.e(TAG, "SMS failed after retry — marking FAILED")
-                if (logEntryId != -1) db.callLogDao().updateStatus(logEntryId, CallStatus.FAILED)
+                if (logEntryId != -1L) db.callLogDao().updateStatus(logEntryId, CallStatus.FAILED)
                 Result.failure()
             }
         }

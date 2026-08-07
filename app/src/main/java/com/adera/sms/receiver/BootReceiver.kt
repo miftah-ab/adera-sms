@@ -39,7 +39,7 @@ class BootReceiver : BroadcastReceiver() {
         Log.i(TAG, "BootReceiver: $action received")
 
         val pendingResult = goAsync()
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 val db       = AppDatabase.getInstance(context.applicationContext)
                 val settings = db.settingsDao().getSettings()

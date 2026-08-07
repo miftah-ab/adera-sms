@@ -20,8 +20,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adera.sms.data.entity.CallLogEntry
 import com.adera.sms.data.entity.CallStatus
 import com.adera.sms.ui.theme.AderaShapes
-import java.text.SimpleDateFormat
-import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,7 +62,7 @@ fun ActivityLogScreen(
                 // Item 8: Search field
                 OutlinedTextField(
                     value = searchQuery,
-                    onValueChange = { viewModel.searchQuery.value = it },
+                    onValueChange = { viewModel.onSearchQueryChanged(it) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp)
@@ -206,13 +204,16 @@ private fun StatusChip(status: CallStatus) {
     }
 }
 
-private val timeFormat = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
+private val dateFormatter = java.time.format.DateTimeFormatter.ofPattern("MMM dd, HH:mm")
+
 private fun Long.toRelativeTime(): String {
     val diff = System.currentTimeMillis() - this
     return when {
         diff < 60_000     -> "Just now"
         diff < 3_600_000  -> "${diff / 60_000}m ago"
         diff < 86_400_000 -> "${diff / 3_600_000}h ago"
-        else              -> timeFormat.format(Date(this))
+        else -> java.time.Instant.ofEpochMilli(this)
+            .atZone(java.time.ZoneId.systemDefault())
+            .format(dateFormatter)
     }
 }

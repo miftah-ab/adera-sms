@@ -45,7 +45,7 @@ interface CallLogDao {
     suspend fun insertEntry(entry: CallLogEntry): Long
 
     @Query("UPDATE call_log_entries SET status = :status WHERE id = :id")
-    suspend fun updateStatus(id: Int, status: CallStatus)
+    suspend fun updateStatus(id: Long, status: CallStatus)
 
     /** Housekeeping — delete entries older than [before] epoch ms. Not called in v1 UI yet. */
     @Query("DELETE FROM call_log_entries WHERE timestamp < :before")

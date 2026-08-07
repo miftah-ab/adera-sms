@@ -62,10 +62,14 @@ object UpdateChecker {
 
     private fun fetchJson(urlString: String): String {
         val conn = URL(urlString).openConnection() as HttpURLConnection
-        conn.connectTimeout = TIMEOUT_MS
-        conn.readTimeout = TIMEOUT_MS
-        conn.requestMethod = "GET"
-        return conn.inputStream.bufferedReader().use { it.readText() }
+        return try {
+            conn.connectTimeout = TIMEOUT_MS
+            conn.readTimeout = TIMEOUT_MS
+            conn.requestMethod = "GET"
+            conn.inputStream.bufferedReader().use { it.readText() }
+        } finally {
+            conn.disconnect()
+        }
     }
 
     private fun parseVersionInfo(json: String): VersionInfo {
