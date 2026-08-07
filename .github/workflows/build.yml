@@ -98,17 +98,21 @@ jobs:
       #    After this, update update-endpoint/version.json with the new
       #    versionCode and push to GitHub Pages so the in-app update checker works.
       # -----------------------------------------------------------------------
+      - name: Rename APK for users
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/Adera_SMS.apk
+
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/release/app-release.apk
+          files: app/build/outputs/apk/release/Adera_SMS.apk
           name: Adera SMS ${{ github.ref_name }}
           body: |
             ## Adera SMS ${{ github.ref_name }}
 
             **Installation:**
-            1. Download `app-release.apk` below
+            1. Download `Adera_SMS.apk` below
             2. On your Android phone: Settings → Security → Install unknown apps → allow your browser/Files app
             3. Tap the downloaded APK to install
 
