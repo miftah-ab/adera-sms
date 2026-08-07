@@ -346,8 +346,6 @@ fun HomeScreen(
                 Icon(Icons.Rounded.ChevronRight, contentDescription = "Open", tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
-            }
-            
             Spacer(modifier = Modifier.weight(1f))
             
             Text(
