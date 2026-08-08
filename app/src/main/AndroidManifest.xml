@@ -39,6 +39,9 @@
     <!-- WorkManager internal — needed for constraint-based scheduling -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- Optional: show contact names in Recents instead of raw numbers -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+
     <application
         android:name=".AderaSmsApplication"
         android:allowBackup="false"

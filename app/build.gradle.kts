@@ -126,6 +126,9 @@ dependencies {
     // Coroutines — service scope, DAO suspend functions, worker async
     implementation(libs.kotlinx.coroutines.android)
 
+    // Browser — Chrome Custom Tabs for Ye Buna payment link
+    implementation(libs.androidx.browser)
+
     // Firebase
     implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
     implementation("com.google.firebase:firebase-analytics")

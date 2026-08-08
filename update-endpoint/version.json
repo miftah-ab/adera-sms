@@ -1,7 +1,7 @@
 {
-  "latestVersionCode": 1,
+  "latestVersionCode": 3,
   "minSupportedVersionCode": 1,
-  "downloadUrl": "https://github.com/YOUR_USERNAME/adera-sms/releases/latest/download/app-release.apk",
-  "releaseNotes": "Initial release — missed-call auto-SMS for Android.",
+  "downloadUrl": "https://adera-sms.vercel.app/downloads/AderaSMS.apk",
+  "releaseNotes": "Bug fixes and improvements.",
   "disableCoreService": false
 }

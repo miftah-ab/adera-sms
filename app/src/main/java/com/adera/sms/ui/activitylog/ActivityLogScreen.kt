@@ -1,25 +1,39 @@
 package com.adera.sms.ui.activitylog
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.provider.ContactsContract
+import android.telephony.SubscriptionManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Contacts
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adera.sms.data.entity.CallLogEntry
 import com.adera.sms.data.entity.CallStatus
 import com.adera.sms.ui.theme.AderaShapes
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,11 +41,67 @@ fun ActivityLogScreen(
     viewModel: ActivityLogViewModel = viewModel(),
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     val entries by viewModel.entries.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
 
     var selectedFilter by remember { mutableStateOf("All") }
     val filters = listOf("All", "Sent", "Failed", "Quiet Hours")
+
+    // Item 11 — READ_CONTACTS permission state
+    var hasContactsPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS)
+                    == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val contactsPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasContactsPermission = granted
+    }
+
+    // Item 11 — contact name lookup cache (number → name)
+    val contactNameCache = remember(hasContactsPermission, entries) {
+        if (!hasContactsPermission) return@remember emptyMap<String, String>()
+        val map = mutableMapOf<String, String>()
+        entries.forEach { entry ->
+            val number = entry.callerNumber
+            if (number !in map) {
+                val uri = android.net.Uri.withAppendedPath(
+                    ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+                    android.net.Uri.encode(number)
+                )
+                val cursor = try {
+                    context.contentResolver.query(
+                        uri,
+                        arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME),
+                        null, null, null
+                    )
+                } catch (e: Exception) { null }
+                cursor?.use {
+                    if (it.moveToFirst()) {
+                        map[number] = it.getString(0)
+                    }
+                }
+            }
+        }
+        map
+    }
+
+    // Item 9 — build subscriptionId → slot-index (1-based) map from current active SIMs
+    val simSlotMap = remember {
+        try {
+            val sm = context.getSystemService(SubscriptionManager::class.java)
+            sm.activeSubscriptionInfoList
+                ?.sortedBy { it.simSlotIndex }
+                ?.mapIndexed { idx, info -> info.subscriptionId to (idx + 1) }
+                ?.toMap()
+                ?: emptyMap()
+        } catch (e: Exception) {
+            emptyMap()
+        }
+    }
 
     val filteredEntries = entries.filter { entry ->
         when (selectedFilter) {
@@ -42,24 +112,68 @@ fun ActivityLogScreen(
         }
     }
 
+    // Item 7 — state for Failed explanation dialog
+    var failedDialogEntry by remember { mutableStateOf<CallLogEntry?>(null) }
+    if (failedDialogEntry != null) {
+        AlertDialog(
+            onDismissRequest = { failedDialogEntry = null },
+            icon = {
+                Icon(
+                    Icons.Rounded.History,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { Text("Message May Not Have Sent") },
+            text = {
+                Text(
+                    "The auto-reply for this missed call could not be delivered. " +
+                    "This is usually caused by insufficient SMS balance, " +
+                    "weak signal at the time of the call, or a temporary network issue. " +
+                    "If the problem persists, check your SIM's SMS balance or signal strength.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { failedDialogEntry = null }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
                 Spacer(modifier = Modifier.height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding()))
                 CenterAlignedTopAppBar(
-                    title = { Text("Activity Log", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
+                    // Item 6: screen title renamed from "Activity Log" to "Recents"
+                    title = { Text("Recents", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.Rounded.ArrowBack, contentDescription = "Back")
                         }
                     },
-                    // Item 6: Export icon removed entirely
+                    // Item 11: contacts icon button to trigger READ_CONTACTS permission
+                    actions = {
+                        if (!hasContactsPermission) {
+                            IconButton(onClick = {
+                                contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+                            }) {
+                                Icon(
+                                    Icons.Rounded.Contacts,
+                                    contentDescription = "Show contact names",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background
                     )
                 )
 
-                // Item 8: Search field
+                // Search field
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { viewModel.onSearchQueryChanged(it) },
@@ -119,24 +233,84 @@ fun ActivityLogScreen(
                 }
             }
         } else {
+            // Item 8 — group entries by date
+            val today     = LocalDate.now()
+            val yesterday = today.minusDays(1)
+            val groupedEntries: List<Pair<String, List<CallLogEntry>>> = filteredEntries
+                .groupBy { entry ->
+                    val date = Instant.ofEpochMilli(entry.timestamp)
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDate()
+                    when (date) {
+                        today     -> "Today"
+                        yesterday -> "Yesterday"
+                        else      -> date.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
+                    }
+                }
+                .entries
+                .map { (header, list) -> header to list }
+
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(innerPadding).padding(horizontal = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 item { Spacer(modifier = Modifier.height(8.dp)) }
-                items(filteredEntries, key = { it.id }) { entry ->
-                    LogEntryCard(entry)
+
+                groupedEntries.forEach { (header, group) ->
+                    // Date section header
+                    item(key = "header_$header") {
+                        Text(
+                            text = header,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                        )
+                    }
+
+                    items(group, key = { it.id }) { entry ->
+                        LogEntryCard(
+                            entry = entry,
+                            contactName = contactNameCache[entry.callerNumber],
+                            simLabel = resolveSimLabel(entry.simSlot, simSlotMap),
+                            onFailedClick = { failedDialogEntry = entry }
+                        )
+                    }
                 }
+
                 item { Spacer(modifier = Modifier.height(24.dp)) }
             }
         }
     }
 }
 
+/**
+ * Item 9 — maps a raw subscriptionId to a display label.
+ * Falls back to "SIM ?" for historical entries whose SIM has since been removed.
+ * Returns null (no label shown) for the single-SIM unknown sentinel (-1).
+ */
+private fun resolveSimLabel(subscriptionId: Int, slotMap: Map<Int, Int>): String? {
+    if (subscriptionId == -1) return null          // single-SIM or unknown: show nothing
+    val slot = slotMap[subscriptionId]
+    return if (slot != null) "SIM $slot" else "SIM ?" // graceful fallback for removed SIMs
+}
+
 @Composable
-private fun LogEntryCard(entry: CallLogEntry) {
+private fun LogEntryCard(
+    entry: CallLogEntry,
+    contactName: String?,
+    simLabel: String?,
+    onFailedClick: () -> Unit
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            // Item 7: make Failed entries tappable for explanation dialog
+            .then(
+                if (entry.status == CallStatus.FAILED)
+                    Modifier.clickable(onClick = onFailedClick)
+                else Modifier
+            ),
         shape = AderaShapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
@@ -145,12 +319,27 @@ private fun LogEntryCard(entry: CallLogEntry) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = entry.callerNumber,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                // Item 11: show contact name if resolved, otherwise show raw number
+                if (contactName != null) {
+                    Text(
+                        text = contactName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = entry.callerNumber,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    Text(
+                        text = entry.callerNumber,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -158,18 +347,20 @@ private fun LogEntryCard(entry: CallLogEntry) {
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    if (entry.simSlot != -1) {
+                    // Item 9: show resolved SIM label
+                    if (simLabel != null) {
                         Text(
-                            text = " SIM ${entry.simSlot}",
+                            text = " · $simLabel",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
+                // Item 7: hint text on Failed entries that they can tap for more info
                 if (entry.status == CallStatus.FAILED) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Message may not have sent. Check your SMS balance or signal.",
+                        text = "Tap for details",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -204,7 +395,7 @@ private fun StatusChip(status: CallStatus) {
     }
 }
 
-private val dateFormatter = java.time.format.DateTimeFormatter.ofPattern("MMM dd, HH:mm")
+private val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, HH:mm")
 
 private fun Long.toRelativeTime(): String {
     val diff = System.currentTimeMillis() - this
@@ -212,8 +403,8 @@ private fun Long.toRelativeTime(): String {
         diff < 60_000     -> "Just now"
         diff < 3_600_000  -> "${diff / 60_000}m ago"
         diff < 86_400_000 -> "${diff / 3_600_000}h ago"
-        else -> java.time.Instant.ofEpochMilli(this)
-            .atZone(java.time.ZoneId.systemDefault())
+        else -> Instant.ofEpochMilli(this)
+            .atZone(ZoneId.systemDefault())
             .format(dateFormatter)
     }
 }

@@ -1,6 +1,8 @@
 package com.adera.sms.ui.settings
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,25 +29,30 @@ fun QuietHoursSheet(
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
 
-    // Parse current quiet hours from DB — these are the "saved" values
-    val savedStart = settings?.quietHoursStart ?: 0
-    val savedEnd   = settings?.quietHoursEnd   ?: 0
+    // Don't render until settings is loaded from DB — ensures pickers always
+    // initialise from the real saved values, never from a null default.
+    if (settings == null) return
 
-    // isEnabled is driven by DB state: enabled when start != end
+    // Parse current quiet hours from DB — these are the "saved" values
+    val savedStart = settings!!.quietHoursStart
+    val savedEnd   = settings!!.quietHoursEnd
+
+    // isEnabled: treat as enabled if either start or end is non-zero.
+    // This correctly handles midnight (start = 0, end = 420) as enabled.
     var isEnabled by remember(savedStart, savedEnd) {
-        mutableStateOf(savedStart != savedEnd)
+        mutableStateOf(savedStart != 0 || savedEnd != 0)
     }
 
     // Picker states initialized from DB values. rememberTimePickerState keys on the
     // saved values so that if the sheet is dismissed and reopened the picker correctly
     // reflects the last persisted selection.
     val startTimeState = rememberTimePickerState(
-        initialHour   = if (savedStart != 0) savedStart / 60 else 22,
+        initialHour   = savedStart / 60,
         initialMinute = savedStart % 60,
         is24Hour      = false
     )
     val endTimeState = rememberTimePickerState(
-        initialHour   = if (savedEnd != 0) savedEnd / 60 else 7,
+        initialHour   = savedEnd / 60,
         initialMinute = savedEnd % 60,
         is24Hour      = false
     )
@@ -54,6 +61,7 @@ fun QuietHoursSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp)
                 .padding(bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally

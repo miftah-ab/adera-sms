@@ -32,11 +32,11 @@ object UpdateChecker {
     private const val TAG = "AderaSMS"
 
     /**
-     * Replace YOUR_USERNAME with your GitHub username after the repo is created.
-     * Host update-endpoint/version.json on GitHub Pages (gh-pages branch or /docs folder).
+     * Static version.json hosted on Vercel.
+     * Also update update-endpoint/version.json's downloadUrl to match.
      */
     const val VERSION_ENDPOINT =
-        "https://miftah-ab.github.io/adera-sms/update-endpoint/version.json"
+        "https://adera-sms.vercel.app/downloads/version.json"
 
     private const val TIMEOUT_MS = 10_000
 

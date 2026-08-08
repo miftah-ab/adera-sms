@@ -62,8 +62,11 @@ class MainActivity : ComponentActivity() {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
 
-                    // Only show bottom bar on main destinations
-                    val showBottomBar = currentDestination?.route in listOf(
+                    // Only show bottom bar on main destinations.
+                    // Fall back to startDest when currentDestination is null (first frame
+                    // before NavHost emits its first back-stack entry) so Scaffold reserves
+                    // correct bottom padding from the very first composition.
+                    val showBottomBar = (currentDestination?.route ?: startDest) in listOf(
                         Screen.Home.route,
                         Screen.TemplateEditor.route,
                         Screen.ActivityLog.route,
@@ -77,7 +80,7 @@ class MainActivity : ComponentActivity() {
                                     val items = listOf(
                                         Triple(Screen.Home.route, "Home", Icons.Rounded.Home),
                                         Triple(Screen.TemplateEditor.route, "Templates", Icons.Rounded.Message),
-                                        Triple(Screen.ActivityLog.route, "Log", Icons.Rounded.List),
+                                        Triple(Screen.ActivityLog.route, "Recents", Icons.Rounded.List),
                                         Triple(Screen.Settings.route, "Settings", Icons.Rounded.Settings)
                                     )
                                     items.forEach { (route, label, icon) ->

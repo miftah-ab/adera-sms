@@ -197,7 +197,7 @@ fun SettingsScreen(
                 // Check for Updates row — shows real network result
                 val updateSubtitle = when (val s = updateStatus) {
                     is UpdateStatus.UpdateAvailable -> "Update available: ${s.info.releaseNotes}"
-                    is UpdateStatus.UpToDate -> "You are up to date"
+                    is UpdateStatus.UpToDate -> "You are using the latest version."
                     is UpdateStatus.Error -> "Check failed. Try again when you have internet."
                     is UpdateStatus.ForceUpdate -> "Critical update required"
                     null -> "Tap to check for updates"
@@ -235,25 +235,23 @@ fun SettingsScreen(
 
                 Divider(modifier = Modifier.padding(start = 56.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
-                // Support contact row
+                // Support contact row — Telegram only
                 SettingsRow(
                     icon = Icons.Rounded.SupportAgent,
                     title = "Contact Support",
-                    subtitle = "Reach us on Telegram or email",
+                    subtitle = "Reach us on Telegram",
                     onClick = {
-                        // TODO: Replace with your real Telegram handle (e.g. "@AderaSMS") or email
-                        val contact = "support@adera-sms.com"
                         try {
-                            val intent = if (contact.startsWith("@")) {
-                                Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/${contact.removePrefix("@")}"))
-                            } else {
-                                Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$contact"))
-                            }
-                            context.startActivity(intent)
+                            val telegramUrl = "https://t.me/REPLACE_WITH_TELEGRAM_HANDLE"
+                            context.startActivity(
+                                android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(telegramUrl))
+                            )
                         } catch (e: android.content.ActivityNotFoundException) {
-                            android.widget.Toast.makeText(context, "No app found to handle this. Contact: $contact", android.widget.Toast.LENGTH_LONG).show()
-                        } catch (e: Exception) {
-                            e.printStackTrace()
+                            android.widget.Toast.makeText(
+                                context,
+                                "Telegram is not installed. Handle: @REPLACE_WITH_TELEGRAM_HANDLE",
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
                         }
                     }
                 )
