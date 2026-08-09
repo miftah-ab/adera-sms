@@ -35,4 +35,7 @@ interface SettingsDao {
 
     @Query("UPDATE app_settings SET lastUpdateCheck = :timestamp WHERE id = 1")
     suspend fun setLastUpdateCheck(timestamp: Long)
+
+    @Query("UPDATE app_settings SET lastServiceHeartbeat = :timestamp WHERE id = 1")
+    suspend fun updateHeartbeat(timestamp: Long)
 }

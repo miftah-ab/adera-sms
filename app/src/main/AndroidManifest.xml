@@ -27,8 +27,8 @@
     <!-- Required for all foreground services (API 28+) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
-    <!-- Required for 'dataSync' foreground service type (API 34+) -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Required for 'specialUse' foreground service type (API 34+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <!-- Required to show the foreground service notification (API 33+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -64,9 +64,9 @@
         </activity>
 
         <!-- ── CallMonitorService ─────────────────────────────────────────
-             foregroundServiceType="dataSync": satisfies the API 34 requirement
-             that all foreground services declare a type. dataSync is appropriate
-             because the service processes and logs call data locally.
+             foregroundServiceType="specialUse": satisfies the API 34 requirement
+             that all foreground services declare a type. specialUse is appropriate
+             because the service processes and logs call data locally continuously.
 
              stopWithTask="false": keeps the service alive even when the user
              swipes the app away from the Recents screen — critical for background
@@ -76,9 +76,13 @@
          ────────────────────────────────────────────────────────────────── -->
         <service
             android:name=".service.CallMonitorService"
-            android:foregroundServiceType="dataSync"
+            android:foregroundServiceType="specialUse"
             android:exported="false"
-            android:stopWithTask="false" />
+            android:stopWithTask="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Automated SMS reply to missed calls" />
+        </service>
 
         <!-- ── BootReceiver ────────────────────────────────────────────────
              Listens for both BOOT_COMPLETED (standard reboot) and

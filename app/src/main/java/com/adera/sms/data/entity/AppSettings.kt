@@ -31,5 +31,7 @@ data class AppSettings(
 
     val consentGiven: Boolean = false, // False = show privacy gate on next launch, hard stop
 
-    val consentTimestamp: Long = 0L     // Epoch ms of when consent was given
+    val consentTimestamp: Long = 0L,    // Epoch ms of when consent was given
+
+    val lastServiceHeartbeat: Long = 0L // Epoch ms of when CallMonitorService last pulsed
 )

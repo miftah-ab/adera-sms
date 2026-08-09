@@ -242,18 +242,32 @@ fun SettingsScreen(
                     subtitle = "Reach us on Telegram",
                     onClick = {
                         try {
-                            val telegramUrl = "https://t.me/REPLACE_WITH_TELEGRAM_HANDLE"
+                            val telegramUrl = "https://t.me/Adera_SMS"
                             context.startActivity(
                                 android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(telegramUrl))
                             )
                         } catch (e: android.content.ActivityNotFoundException) {
                             android.widget.Toast.makeText(
                                 context,
-                                "Telegram is not installed. Handle: @REPLACE_WITH_TELEGRAM_HANDLE",
+                                "Telegram is not installed. Handle: @Adera_SMS",
                                 android.widget.Toast.LENGTH_LONG
                             ).show()
                         }
                     }
+                )
+                
+                Divider(modifier = Modifier.padding(start = 56.dp), color = MaterialTheme.colorScheme.outlineVariant)
+
+                // Diagnostic row — Heartbeat
+                SettingsRow(
+                    icon = Icons.Rounded.Info,
+                    title = "Service Diagnostic",
+                    subtitle = "Heartbeat: " + (settings?.lastServiceHeartbeat?.let {
+                        if (it == 0L) "Never" else {
+                            val diff = (System.currentTimeMillis() - it) / 60000
+                            if (diff == 0L) "Just now" else "$diff min ago"
+                        }
+                    } ?: "Unknown")
                 )
             }
 

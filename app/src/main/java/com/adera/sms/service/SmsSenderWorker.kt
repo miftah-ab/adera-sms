@@ -46,7 +46,7 @@ class SmsSenderWorker(
 
     companion object {
         private const val TAG = "AderaSMS"
-        const val SIGNATURE = " By Adera SMS"
+        const val SIGNATURE = "\n\nBy Adera SMS"
 
         const val KEY_CALLER_NUMBER     = "caller_number"
         const val KEY_SUBSCRIPTION_ID   = "subscription_id"

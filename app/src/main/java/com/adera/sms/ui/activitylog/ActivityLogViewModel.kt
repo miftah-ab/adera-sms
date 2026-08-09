@@ -28,4 +28,10 @@ class ActivityLogViewModel(app: Application) : AndroidViewModel(app) {
         if (query.isBlank()) entries
         else entries.filter { it.callerNumber.contains(query.trim(), ignoreCase = true) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    suspend fun getLimitResetTimeMillis(): Long {
+        val since24h = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
+        val oldest = db.callLogDao().getOldestSentSince(since24h) ?: System.currentTimeMillis()
+        return oldest + 24 * 60 * 60 * 1000L
+    }
 }

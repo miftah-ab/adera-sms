@@ -39,6 +39,12 @@ interface CallLogDao {
     """)
     suspend fun getRecentByNumberHash(numberHash: String, since: Long): List<CallLogEntry>
 
+    @Query("SELECT COUNT(*) FROM call_log_entries WHERE timestamp > :since AND status = 'SENT'")
+    suspend fun countSentSince(since: Long): Int
+
+    @Query("SELECT timestamp FROM call_log_entries WHERE timestamp > :since AND status = 'SENT' ORDER BY timestamp ASC LIMIT 1")
+    suspend fun getOldestSentSince(since: Long): Long?
+
     // ── Writes ────────────────────────────────────────────────────────────────
 
     @Insert

@@ -13,6 +13,14 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -276,6 +284,140 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // ── Support Adera entry point ───────────────────────────────────────
+            // Compact card: secondary hierarchy, below all primary controls.
+            // One-time entrance animation (fade + slide) — never repeats.
+            val yebunaUrl = "REPLACE_WITH_YE_BUNA_URL"
+            var cardVisible by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) { cardVisible = true }
+
+            AnimatedVisibility(
+                visible = cardVisible,
+                enter = fadeIn(animationSpec = tween(durationMillis = 500)) +
+                        slideInVertically(
+                            animationSpec = tween(durationMillis = 400),
+                            initialOffsetY = { it / 4 }
+                        )
+            ) {
+                val yeBunaInteractionSource = remember { MutableInteractionSource() }
+                val yeBunaIsPressed by yeBunaInteractionSource.collectIsPressedAsState()
+                val yeBunaScale by animateFloatAsState(
+                    targetValue = if (yeBunaIsPressed) 0.98f else 1f,
+                    animationSpec = spring(dampingRatio = 0.5f, stiffness = 400f)
+                )
+
+                // Pulse animation
+                val infiniteTransition = rememberInfiniteTransition()
+                val pulseScale by infiniteTransition.animateFloat(
+                    initialValue = 1f,
+                    targetValue = 1.02f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(1500, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    )
+                )
+                
+                // Shimmer sweep animation
+                val shimmerTranslate by infiniteTransition.animateFloat(
+                    initialValue = -1000f,
+                    targetValue = 1000f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(2500, easing = LinearEasing, delayMillis = 1500),
+                        repeatMode = RepeatMode.Restart
+                    )
+                )
+                val shimmerBrush = Brush.linearGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0f),
+                        Color.White.copy(alpha = 0.2f),
+                        Color.White.copy(alpha = 0f)
+                    ),
+                    start = androidx.compose.ui.geometry.Offset(shimmerTranslate, 0f),
+                    end = androidx.compose.ui.geometry.Offset(shimmerTranslate + 200f, 200f)
+                )
+
+                val gradientBrush = Brush.linearGradient(
+                    colors = listOf(Color(0xFF17B871), Color(0xFFF5A623))
+                )
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .scale(yeBunaScale * pulseScale)
+                        .clickable(
+                            interactionSource = yeBunaInteractionSource,
+                            indication = androidx.compose.foundation.LocalIndication.current
+                        ) {
+                            try {
+                                CustomTabsIntent.Builder()
+                                    .setShowTitle(true)
+                                    .build()
+                                    .launchUrl(context, Uri.parse(yebunaUrl))
+                            } catch (e: Exception) {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Could not open link. Please try again.",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        },
+                    shape = AderaShapes.medium,
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                ) {
+                    Box(modifier = Modifier.background(gradientBrush).background(shimmerBrush)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Icon container
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color.White.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Favorite,
+                                    contentDescription = "Support",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Support Adera SMS",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Enjoying the app? Buy the developer a coffee.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.8f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            Icon(
+                                Icons.Rounded.ChevronRight,
+                                contentDescription = "Open",
+                                tint = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
             // Recent Activity Preview
             if (recentLogs.isNotEmpty()) {
                 Row(
@@ -292,7 +434,7 @@ fun HomeScreen(
                     )
                 }
                 
-                recentLogs.forEach { entry ->
+                recentLogs.take(2).forEach { entry ->
                     Card(
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                         shape = AderaShapes.medium,
@@ -356,93 +498,7 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // ── Support Adera entry point ───────────────────────────────────────
-            // Compact card: secondary hierarchy, below all primary controls.
-            // One-time entrance animation (fade + slide) — never repeats.
-            val yebunaUrl = "REPLACE_WITH_YE_BUNA_URL"
-            var cardVisible by remember { mutableStateOf(false) }
-            LaunchedEffect(Unit) { cardVisible = true }
-
-            AnimatedVisibility(
-                visible = cardVisible,
-                enter = fadeIn(animationSpec = tween(durationMillis = 500)) +
-                        slideInVertically(
-                            animationSpec = tween(durationMillis = 400),
-                            initialOffsetY = { it / 4 }
-                        )
-            ) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            try {
-                                CustomTabsIntent.Builder()
-                                    .setShowTitle(true)
-                                    .build()
-                                    .launchUrl(context, Uri.parse(yebunaUrl))
-                            } catch (e: Exception) {
-                                android.widget.Toast.makeText(
-                                    context,
-                                    "Could not open link. Please try again.",
-                                    android.widget.Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        },
-                    shape = AderaShapes.medium,
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Coffee emoji in a small icon container
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "\u2615",  // ☕ hot beverage
-                                style = MaterialTheme.typography.titleSmall
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Support Adera",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "Enjoying the app? Buy the developer a coffee.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        Icon(
-                            Icons.Rounded.ChevronRight,
-                            contentDescription = "Open",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
+            // Old Ye Buna location removed
         }
     }
 

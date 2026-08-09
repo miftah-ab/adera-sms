@@ -25,7 +25,7 @@ import com.adera.sms.data.entity.MessageTemplate
  */
 @Database(
     entities = [MessageTemplate::class, CallLogEntry::class, AppSettings::class],
-    version = 3,
+    version = 4,
     exportSchema = true   // Schema JSON written to app/schemas/ for version history
 )
 @TypeConverters(Converters::class)
@@ -48,7 +48,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     DB_NAME
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
                 .also { INSTANCE = it }
             }
@@ -119,6 +119,12 @@ abstract class AppDatabase : RoomDatabase() {
 
                 database.execSQL("DROP TABLE app_settings")
                 database.execSQL("ALTER TABLE app_settings_new RENAME TO app_settings")
+            }
+        }
+
+        private val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE app_settings ADD COLUMN lastServiceHeartbeat INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

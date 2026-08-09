@@ -142,6 +142,59 @@ fun ActivityLogScreen(
         )
     }
 
+    var limitDialogEntry by remember { mutableStateOf<CallLogEntry?>(null) }
+    if (limitDialogEntry != null) {
+        var countdownText by remember { mutableStateOf("Calculating...") }
+        
+        LaunchedEffect(Unit) {
+            val resetTime = viewModel.getLimitResetTimeMillis()
+            while (true) {
+                val remaining = resetTime - System.currentTimeMillis()
+                if (remaining <= 0) {
+                    countdownText = "Limit has reset."
+                    break
+                }
+                val hours = java.util.concurrent.TimeUnit.MILLISECONDS.toHours(remaining)
+                val mins = java.util.concurrent.TimeUnit.MILLISECONDS.toMinutes(remaining) % 60
+                val secs = java.util.concurrent.TimeUnit.MILLISECONDS.toSeconds(remaining) % 60
+                countdownText = String.format("Reset in %02d:%02d:%02d", hours, mins, secs)
+                kotlinx.coroutines.delay(1000)
+            }
+        }
+
+        AlertDialog(
+            onDismissRequest = { limitDialogEntry = null },
+            icon = {
+                Icon(
+                    Icons.Rounded.ErrorOutline,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            title = { Text("Daily Limit Reached") },
+            text = {
+                Column {
+                    Text(
+                        "To protect your carrier plan and prevent spam, Adera SMS is limited to sending 15 auto-replies every 24 hours.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = countdownText,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { limitDialogEntry = null }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
@@ -269,11 +322,14 @@ fun ActivityLogScreen(
                     }
 
                     items(group, key = { it.id }) { entry ->
+                        val contactName = contactNameCache[entry.callerNumber]
+                        val simLabel = resolveSimLabel(entry.simSlot, simSlotMap)
                         LogEntryCard(
                             entry = entry,
-                            contactName = contactNameCache[entry.callerNumber],
-                            simLabel = resolveSimLabel(entry.simSlot, simSlotMap),
-                            onFailedClick = { failedDialogEntry = entry }
+                            contactName = contactName,
+                            simLabel = simLabel,
+                            onFailedClick = { failedDialogEntry = entry },
+                            onLimitClick = { limitDialogEntry = entry }
                         )
                     }
                 }
@@ -300,16 +356,19 @@ private fun LogEntryCard(
     entry: CallLogEntry,
     contactName: String?,
     simLabel: String?,
-    onFailedClick: () -> Unit
+    onFailedClick: () -> Unit,
+    onLimitClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             // Item 7: make Failed entries tappable for explanation dialog
             .then(
-                if (entry.status == CallStatus.FAILED)
-                    Modifier.clickable(onClick = onFailedClick)
-                else Modifier
+                when (entry.status) {
+                    CallStatus.FAILED -> Modifier.clickable(onClick = onFailedClick)
+                    CallStatus.DAILY_LIMIT_REACHED -> Modifier.clickable(onClick = onLimitClick)
+                    else -> Modifier
+                }
             ),
         shape = AderaShapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -379,6 +438,7 @@ private fun StatusChip(status: CallStatus) {
         CallStatus.SUPPRESSED_QUIET_HOURS -> Triple("Quiet hrs", MaterialTheme.colorScheme.surface,            MaterialTheme.colorScheme.onSurfaceVariant)
         CallStatus.SUPPRESSED_COOLDOWN    -> Triple("Cooldown",  MaterialTheme.colorScheme.surface,            MaterialTheme.colorScheme.onSurfaceVariant)
         CallStatus.PENDING                -> Triple("Pending",   MaterialTheme.colorScheme.surface,            MaterialTheme.colorScheme.onSurfaceVariant)
+        CallStatus.DAILY_LIMIT_REACHED    -> Triple("Limit Reached", MaterialTheme.colorScheme.surface,        MaterialTheme.colorScheme.onSurfaceVariant)
     }
 
     Surface(

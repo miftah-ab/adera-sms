@@ -113,6 +113,17 @@ class CallMonitorService : Service() {
         startForegroundWithNotification()
         registerListeners()
         Log.i(TAG, "CallMonitorService started")
+        
+        serviceScope.launch {
+            while (kotlinx.coroutines.isActive) {
+                try {
+                    database.settingsDao().updateHeartbeat(System.currentTimeMillis())
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to update heartbeat", e)
+                }
+                kotlinx.coroutines.delay(60_000L) // every minute
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int =
@@ -151,7 +162,7 @@ class CallMonitorService : Service() {
             startForeground(
                 AderaSmsApplication.NOTIFICATION_ID_SERVICE,
                 notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
             )
         } else {
             startForeground(AderaSmsApplication.NOTIFICATION_ID_SERVICE, notification)
@@ -267,6 +278,14 @@ class CallMonitorService : Service() {
         if (isInCooldown(hash)) {
             Log.d(TAG, "Cooldown active — suppressing duplicate")
             writeLogEntry(callerNumber, subId, CallStatus.SUPPRESSED_COOLDOWN)
+            return
+        }
+
+        val since24h = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
+        val sentCount = database.callLogDao().countSentSince(since24h)
+        if (sentCount >= 15) {
+            Log.d(TAG, "Daily limit reached — suppressing duplicate")
+            writeLogEntry(callerNumber, subId, CallStatus.DAILY_LIMIT_REACHED)
             return
         }
 

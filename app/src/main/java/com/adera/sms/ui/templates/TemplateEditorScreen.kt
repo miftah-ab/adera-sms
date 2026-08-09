@@ -34,7 +34,7 @@ import com.adera.sms.ui.theme.AderaShapes
  * Returns Pair(segmentCount, charsUsedInFinalSegment).
  *
  * Item 14: The [signature] is included in the calculation so the counter reflects
- * the true final message length including the mandatory " By Adera SMS" suffix.
+ * the true final message length including the mandatory "\n\nBy Adera SMS" suffix.
  */
 private fun smsSegmentInfo(userText: String, signature: String): Pair<Int, Int> {
     val fullText = userText + signature
@@ -284,7 +284,7 @@ private fun EditTemplateSheet(
 
             // Signature preview
             Text(
-                text = "+ By Adera SMS (appended automatically)",
+                text = "+\n\nBy Adera SMS (appended automatically)",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
