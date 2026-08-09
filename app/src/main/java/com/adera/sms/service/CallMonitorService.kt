@@ -35,6 +35,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
@@ -115,13 +117,13 @@ class CallMonitorService : Service() {
         Log.i(TAG, "CallMonitorService started")
         
         serviceScope.launch {
-            while (kotlinx.coroutines.isActive) {
+            while (isActive) {
                 try {
                     database.settingsDao().updateHeartbeat(System.currentTimeMillis())
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to update heartbeat", e)
                 }
-                kotlinx.coroutines.delay(60_000L) // every minute
+                delay(300_000L) // every 5 minutes
             }
         }
     }

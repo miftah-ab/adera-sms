@@ -166,7 +166,7 @@ fun ActivityLogScreen(
             onDismissRequest = { limitDialogEntry = null },
             icon = {
                 Icon(
-                    Icons.Rounded.ErrorOutline,
+                    Icons.Rounded.Info,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
