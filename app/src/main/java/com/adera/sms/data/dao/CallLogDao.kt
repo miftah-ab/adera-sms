@@ -45,6 +45,26 @@ interface CallLogDao {
     @Query("SELECT timestamp FROM call_log_entries WHERE timestamp > :since AND status = 'SENT' ORDER BY timestamp ASC LIMIT 1")
     suspend fun getOldestSentSince(since: Long): Long?
 
+    /**
+     * Find any log entry for this number hash within the time window, in any terminal status.
+     * Used during startup call-log reconciliation to avoid re-logging calls we already know about.
+     */
+    @Query("""
+        SELECT * FROM call_log_entries
+        WHERE callerNumberHash = :numberHash
+          AND timestamp > :since
+        LIMIT 1
+    """)
+    suspend fun getAnyEntryByHashSince(numberHash: String, since: Long): List<CallLogEntry>
+
+    /** Returns all PENDING entries older than [cutoffMs]. Used to detect orphan PENDINGs. */
+    @Query("SELECT * FROM call_log_entries WHERE status = 'PENDING' AND timestamp < :cutoffMs")
+    suspend fun getStuckPendingBefore(cutoffMs: Long): List<CallLogEntry>
+
+    /** Bulk-mark all PENDING entries older than [cutoffMs] as FAILED. */
+    @Query("UPDATE call_log_entries SET status = 'FAILED' WHERE status = 'PENDING' AND timestamp < :cutoffMs")
+    suspend fun markStuckPendingAsFailed(cutoffMs: Long): Int
+
     // ── Writes ────────────────────────────────────────────────────────────────
 
     @Insert
