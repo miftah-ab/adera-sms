@@ -17,6 +17,7 @@ import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Contacts
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -166,7 +167,7 @@ fun ActivityLogScreen(
             onDismissRequest = { limitDialogEntry = null },
             icon = {
                 Icon(
-                    Icons.Rounded.Info,
+                    Icons.Rounded.Warning,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -196,6 +197,7 @@ fun ActivityLogScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
                 Spacer(modifier = Modifier.height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding()))

@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -79,22 +80,86 @@ fun SettingsScreen(
 
     if (showPrivacySheet) {
         androidx.compose.material3.ModalBottomSheet(onDismissRequest = { showPrivacySheet = false }) {
-            Column(modifier = Modifier.padding(24.dp).padding(bottom = 32.dp)) {
-                Text("Privacy Policy", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    "Adera SMS operates entirely on your device. We do not collect, transmit, or store your call logs, messages, or contacts on any external servers. Your data remains yours.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(32.dp))
-                Button(onClick = { showPrivacySheet = false }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Close")
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 40.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    Text(
+                        "Privacy Policy",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Effective date: January 1, 2025",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(16.dp))
+                }
+                item {
+                    Text("1. Data We Collect", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Adera SMS operates entirely on your device. The app processes phone call state events and sends SMS messages on your behalf. No call logs, phone numbers, message content, or personal data are transmitted to any external server, cloud service, or third party.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                item {
+                    Text("2. Analytics", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "The app uses Firebase Analytics to collect anonymous, aggregated usage statistics such as app opens and feature interactions. No personally identifiable information is included. Analytics data helps improve the app and is subject to Google's privacy policy.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                item {
+                    Text("3. SMS Sending", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Adera SMS sends text messages from your SIM card using your device's standard SMS capability. You are responsible for any carrier charges that apply. The app sends messages only in response to missed calls, and only when auto-reply is enabled by you.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                item {
+                    Text("4. Permissions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "The app requires the following permissions: READ_PHONE_STATE and READ_CALL_LOG to detect missed calls, SEND_SMS to send auto-replies, POST_NOTIFICATIONS to display the background service notification, and RECEIVE_BOOT_COMPLETED to restart after reboot. No permission is used for any purpose beyond what is described above.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                item {
+                    Text("5. Data Retention", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Activity logs (timestamps and masked caller numbers) are stored locally in the app's private database and are never shared. You can delete all data at any time from Settings → Clear All Data.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                item {
+                    Text("6. Contact", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "For privacy questions or concerns, contact us on Telegram: @Adera_SMS",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = { showPrivacySheet = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Close") }
                 }
             }
         }
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
                 Spacer(modifier = Modifier.height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding()))

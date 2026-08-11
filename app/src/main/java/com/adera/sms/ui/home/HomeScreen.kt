@@ -79,6 +79,7 @@ fun HomeScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             Column(
                 modifier = Modifier
@@ -288,7 +289,7 @@ fun HomeScreen(
             // Full-width premium card — 2026 industry standard design.
             // Entrance: fade + slide, never repeats.
             // Idle: continuous subtle pulse + shimmer sweep across gradient.
-            val yebunaUrl = "REPLACE_WITH_YE_BUNA_URL"
+            val yebunaUrl = "https://ye-buna.com/PrimeWisdom"
             var cardVisible by remember { mutableStateOf(false) }
             LaunchedEffect(Unit) { cardVisible = true }
 

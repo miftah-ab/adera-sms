@@ -13,6 +13,7 @@
     <color name="brand_green_800">#2E7D32</color>   <!-- Primary brand color -->
     <color name="brand_green_700">#388E3C</color>   <!-- Lighter variant -->
     <color name="brand_green_600">#43A047</color>   <!-- Hover / pressed state -->
+    <color name="brand_icon_bg">#003C2D</color>     <!-- App icon background — matches aderasms-logo.png exactly -->
 
     <!-- Deep dark backgrounds (dark-mode-first UI) -->
     <color name="brand_green_bg_dark">#0A1A0B</color>   <!-- Page background -->

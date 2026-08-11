@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Round launcher icon variant — same as square adaptive icon.
-     Some launchers request the round variant explicitly. -->
+<!-- Adaptive launcher icon — round variant (API 26+).
+     Identical foreground/background to ic_launcher.xml.
+     The round mask is applied by the launcher host, not here. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/brand_green_800"/>
-    <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+    <background android:drawable="@color/brand_icon_bg"/>
+    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
 </adaptive-icon>

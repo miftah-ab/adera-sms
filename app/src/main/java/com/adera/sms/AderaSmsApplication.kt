@@ -92,27 +92,19 @@ class AderaSmsApplication : Application() {
      * any public/TikTok release. Transliterations are in values-am/strings.xml.
      */
     private fun buildPresetTemplates() = listOf(
-        // ── English ──────────────────────────────────────────────────────────
+        // ── English (3) ──────────────────────────────────────────────────────
         MessageTemplate(text = "Sorry I missed your call. I'll call you back soon.",
             language = "en", isDefault = true,  isPreset = true),
-        MessageTemplate(text = "I'm currently unavailable. I'll get back to you as soon as possible.",
-            language = "en", isDefault = false, isPreset = true),
         MessageTemplate(text = "I'm in a meeting. I'll call you back shortly.",
             language = "en", isDefault = false, isPreset = true),
         MessageTemplate(text = "I'm driving right now. I'll call you when I arrive.",
             language = "en", isDefault = false, isPreset = true),
-        MessageTemplate(text = "I'm busy right now. Please send me a text and I'll reply soon.",
-            language = "en", isDefault = false, isPreset = true),
-        // ── Amharic ──────────────────────────────────────────────────────────
+        // ── Amharic (3) ──────────────────────────────────────────────────────
         MessageTemplate(text = "ይቅርታ ጥሪዎን አምልጦኛል። ብዙም ሳይቆይ እደውሎልዎታለሁ።",
-            language = "am", isDefault = false, isPreset = true),
-        MessageTemplate(text = "አሁን ጥሪ መቀበል አልችልም። ቶሎ ቶሎ እደውሎልዎታለሁ።",
             language = "am", isDefault = false, isPreset = true),
         MessageTemplate(text = "ስብሰባ ላይ ነኝ። ብዙም ሳይቆይ እደውሎልዎታለሁ።",
             language = "am", isDefault = false, isPreset = true),
         MessageTemplate(text = "እየነዳሁ ነው። ሲደርስ እደውሎልዎታለሁ።",
-            language = "am", isDefault = false, isPreset = true),
-        MessageTemplate(text = "አሁን ትንሽ ሥራ ተጠምጄ ነኝ። ዋትስአፕ ወይም SMS ይላኩልኝ።",
             language = "am", isDefault = false, isPreset = true)
     )
 
