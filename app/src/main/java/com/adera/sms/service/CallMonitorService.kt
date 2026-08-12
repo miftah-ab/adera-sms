@@ -85,6 +85,38 @@ class CallMonitorService : Service() {
         fun stop(context: Context) {
             context.stopService(Intent(context, CallMonitorService::class.java))
         }
+
+        fun buildNotification(context: Context): Notification {
+            val tapIntent = PendingIntent.getActivity(
+                context, 0,
+                Intent(context, MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_SINGLE_TOP },
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+
+            return NotificationCompat.Builder(context, AderaSmsApplication.CHANNEL_ID_SERVICE)
+                .setContentTitle(context.getString(R.string.notification_service_title))
+                .setContentText(context.getString(R.string.notification_service_text))
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentIntent(tapIntent)
+                // setOngoing(true) intentionally NOT set — on Android 13+ the user may swipe
+                // this notification away while the foreground service continues running.
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+                .build()
+        }
+
+        fun buildForegroundInfo(context: Context): androidx.work.ForegroundInfo {
+            val notification = buildNotification(context)
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                androidx.work.ForegroundInfo(
+                    AderaSmsApplication.NOTIFICATION_ID_SERVICE,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                )
+            } else {
+                androidx.work.ForegroundInfo(AderaSmsApplication.NOTIFICATION_ID_SERVICE, notification)
+            }
+        }
     }
 
     private lateinit var database: AppDatabase
@@ -143,22 +175,7 @@ class CallMonitorService : Service() {
     // ── Foreground notification ───────────────────────────────────────────────
 
     private fun startForegroundWithNotification() {
-        val tapIntent = PendingIntent.getActivity(
-            this, 0,
-            Intent(this, MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_SINGLE_TOP },
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
-        val notification: Notification = NotificationCompat.Builder(this, AderaSmsApplication.CHANNEL_ID_SERVICE)
-            .setContentTitle(getString(R.string.notification_service_title))
-            .setContentText(getString(R.string.notification_service_text))
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentIntent(tapIntent)
-            // setOngoing(true) intentionally NOT set — on Android 13+ the user may swipe
-            // this notification away while the foreground service continues running.
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .build()
+        val notification = buildNotification(this)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
