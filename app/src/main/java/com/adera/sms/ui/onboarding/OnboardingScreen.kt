@@ -40,9 +40,8 @@ fun OnboardingScreen(onOnboardingComplete: () -> Unit) {
 
     var privacyText by remember { mutableStateOf("Loading...") }
     var termsText by remember { mutableStateOf("Loading...") }
-    val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.Dispatchers.IO.invoke {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             privacyText = try {
                 context.assets.open("privacy_policy.md").bufferedReader().use { it.readText() }
             } catch (e: Exception) { "Error loading Privacy Policy." }
