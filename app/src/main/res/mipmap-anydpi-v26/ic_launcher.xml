@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Adaptive launcher icon — square variant (API 26+).
-     Background: exact icon background green (#003C2D) matching aderasms-logo.png.
-     Foreground: PNG version of the golden mark for crisp rendering at all densities.
-     The launcher clips this to its preferred shape (circle, squircle, rounded square, etc). -->
+<!--
+    Adaptive launcher icon (API 26+).
+    Uses the full aderasms-logo.png as a single-layer foreground on the brand
+    green background. The logo already contains the rounded-rect shape baked
+    in, so we use a transparent foreground background and let the OS clipper
+    handle the shape mask (circle, squircle, etc.).
+
+    background: brand icon green (#003C2D) — matches the logo background exactly
+    foreground: the logo PNG scaled to the 108dp adaptive viewport
+-->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/brand_icon_bg"/>
     <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
