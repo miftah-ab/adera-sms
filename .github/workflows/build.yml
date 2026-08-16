@@ -36,11 +36,14 @@ jobs:
           cache: gradle
 
       # -----------------------------------------------------------------------
-      # 2. Gradle setup — the setup-gradle action reads the version from
-      #    gradle-wrapper.properties automatically. No gradle-version override needed.
+      # 2. Gradle setup — gradle-version: wrapper tells the action to read the
+      #    version from gradle-wrapper.properties (currently 8.11.1) and also
+      #    generate the gradle-wrapper.jar which is not committed to git.
       # -----------------------------------------------------------------------
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: wrapper   # reads gradle-wrapper.properties + generates the JAR
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
