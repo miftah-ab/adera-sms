@@ -36,20 +36,14 @@ jobs:
           cache: gradle
 
       # -----------------------------------------------------------------------
-      # 2. Gradle setup — downloads Gradle 8.6 if wrapper JAR is missing.
-      #    The gradle-wrapper.properties pins the version; this action honours it.
+      # 2. Gradle setup — the setup-gradle action reads the version from
+      #    gradle-wrapper.properties automatically. No gradle-version override needed.
       # -----------------------------------------------------------------------
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: "8.6"   # Matches gradle-wrapper.properties — used to bootstrap the JAR
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
-
-      # Bootstrap gradle-wrapper.jar from the pinned version (binary not committed to git)
-      - name: Bootstrap Gradle wrapper JAR
-        run: gradle wrapper --gradle-version 8.6
 
       # -----------------------------------------------------------------------
       # 3. Release build — runs on every push / PR (unsigned) and on version
