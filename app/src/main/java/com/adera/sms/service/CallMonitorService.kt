@@ -4,11 +4,13 @@ import android.Manifest
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.Bundle
 import android.database.ContentObserver
 import android.net.Uri
 import android.os.Handler
@@ -108,7 +110,11 @@ class CallMonitorService : Service() {
 
         fun buildForegroundInfo(context: Context): androidx.work.ForegroundInfo {
             val notification = buildNotification(context)
-            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // API 34+ (UPSIDE_DOWN_CAKE): foreground service type is required in the
+            // ForegroundInfo constructor and must exactly match the manifest declaration.
+            // On API 29–33, the 2-arg constructor is correct — passing the type on those
+            // versions caused the foregroundServiceType mismatch crash (Crash 1).
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 androidx.work.ForegroundInfo(
                     AderaSmsApplication.NOTIFICATION_ID_SERVICE,
                     notification,
@@ -233,16 +239,42 @@ class CallMonitorService : Service() {
     private fun activeSubscriptionIds(): List<Int> {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
             != PackageManager.PERMISSION_GRANTED) {
-            Log.w(TAG, "READ_PHONE_STATE not granted — using default SIM fallback")
-            return listOf(-1)
+            Log.w(TAG, "READ_PHONE_STATE not granted — using default voice sub fallback")
+            return listOf(defaultVoiceSubId())
         }
-        val subs = getSystemService(SubscriptionManager::class.java)
-            .activeSubscriptionInfoList
+        val subs = try {
+            getSystemService(SubscriptionManager::class.java).activeSubscriptionInfoList
+        } catch (e: Exception) {
+            Log.w(TAG, "getActiveSubscriptionInfoList failed: ${e.message}")
+            null
+        }
         return if (subs.isNullOrEmpty()) {
-            Log.w(TAG, "No active subscriptions — using default SIM fallback")
-            listOf(-1)
+            // On Android 13+ the list can be null for non-privileged apps even with
+            // READ_PHONE_STATE granted. Use the default voice subscription ID instead
+            // of bare -1 (base TelephonyManager), which is unreliable on Android 15.
+            Log.w(TAG, "No active subscriptions returned — using default voice sub fallback")
+            listOf(defaultVoiceSubId())
         } else {
             subs.map { it.subscriptionId }
+        }
+    }
+
+    /**
+     * Returns the system default voice subscription ID, or -1 as a last resort.
+     *
+     * Registering TelephonyCallback on a TelephonyManager created with a real
+     * subscription ID is more reliable than using the base TelephonyManager (subId=-1)
+     * on Android 15, where bare-TelephonyManager callback delivery is inconsistent
+     * on certain OEM builds.
+     */
+    private fun defaultVoiceSubId(): Int {
+        val id = SubscriptionManager.getDefaultVoiceSubscriptionId()
+        return if (id != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            Log.d(TAG, "defaultVoiceSubId: using $id")
+            id
+        } else {
+            Log.w(TAG, "defaultVoiceSubId: INVALID — falling back to base TelephonyManager")
+            -1
         }
     }
 
@@ -349,7 +381,15 @@ class CallMonitorService : Service() {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    /** Used on API 31+ where TelephonyCallback doesn't provide the caller number directly. */
+    /**
+     * Used on API 31+ where TelephonyCallback doesn't provide the caller number directly.
+     *
+     * IMPORTANT — LIMIT in sortOrder:
+     *   Appending "LIMIT n" directly in the sortOrder string of ContentResolver.query() throws
+     *   IllegalArgumentException: Invalid token LIMIT on Android 11+ (API 30+). The fix is to
+     *   use the Bundle-based query overload (API 30+) which accepts QUERY_ARG_LIMIT separately.
+     *   The legacy sortOrder string with LIMIT is only used on API < 30 where it is valid.
+     */
     private suspend fun queryCallLogForMissedNumber(): String? = suspendCancellableCoroutine { cont ->
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CALL_LOG)
             != PackageManager.PERMISSION_GRANTED) {
@@ -366,13 +406,44 @@ class CallMonitorService : Service() {
                 } catch (e: Exception) {}
 
                 try {
-                    val cursor = resolver.query(
-                        CallLog.Calls.CONTENT_URI,
-                        arrayOf(CallLog.Calls.NUMBER),
-                        "${CallLog.Calls.TYPE} = ?",
-                        arrayOf(CallLog.Calls.MISSED_TYPE.toString()),
-                        "${CallLog.Calls.DATE} DESC LIMIT 1"
-                    )
+                    val cursor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        // API 30+: Bundle-based query — LIMIT in sortOrder is rejected by
+                        // the platform on API 30+ with IllegalArgumentException.
+                        val args = Bundle().apply {
+                            putInt(ContentResolver.QUERY_ARG_LIMIT, 1)
+                            putStringArray(
+                                ContentResolver.QUERY_ARG_SORT_COLUMNS,
+                                arrayOf(CallLog.Calls.DATE)
+                            )
+                            putInt(
+                                ContentResolver.QUERY_ARG_SORT_DIRECTION,
+                                ContentResolver.QUERY_SORT_DIRECTION_DESCENDING
+                            )
+                            putString(
+                                ContentResolver.QUERY_ARG_SQL_SELECTION,
+                                "${CallLog.Calls.TYPE} = ?"
+                            )
+                            putStringArray(
+                                ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,
+                                arrayOf(CallLog.Calls.MISSED_TYPE.toString())
+                            )
+                        }
+                        resolver.query(
+                            CallLog.Calls.CONTENT_URI,
+                            arrayOf(CallLog.Calls.NUMBER),
+                            args,
+                            null  // CancellationSignal
+                        )
+                    } else {
+                        // API < 30: legacy sortOrder string — LIMIT is accepted here.
+                        resolver.query(
+                            CallLog.Calls.CONTENT_URI,
+                            arrayOf(CallLog.Calls.NUMBER),
+                            "${CallLog.Calls.TYPE} = ?",
+                            arrayOf(CallLog.Calls.MISSED_TYPE.toString()),
+                            "${CallLog.Calls.DATE} DESC LIMIT 1"
+                        )
+                    }
                     cursor?.use {
                         if (it.moveToFirst()) {
                             if (cont.isActive) cont.resume(it.getString(0))
@@ -384,6 +455,11 @@ class CallMonitorService : Service() {
                     }
                 } catch (e: SecurityException) {
                     Log.e(TAG, "SecurityException querying call log", e)
+                    if (cont.isActive) cont.resume(null)
+                } catch (e: Exception) {
+                    // Catch-all: ensures no uncaught exception can propagate out of the
+                    // ContentObserver callback and silently kill the coroutine.
+                    Log.e(TAG, "Exception querying call log", e)
                     if (cont.isActive) cont.resume(null)
                 }
             }
