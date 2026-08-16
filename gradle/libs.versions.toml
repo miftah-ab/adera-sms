@@ -1,35 +1,35 @@
 [versions]
 # Build tooling
-agp             = "8.3.2"
-kotlin          = "1.9.23"
+agp             = "8.7.3"
+kotlin          = "2.1.0"
 # KSP version must match Kotlin version exactly: <kotlin>-<ksp-patch>
-ksp             = "1.9.23-1.0.20"
+ksp             = "2.1.0-1.0.29"
 
 # AndroidX
-coreKtx         = "1.13.0"
-lifecycleKtx    = "2.7.0"
-activityCompose = "1.9.0"
+coreKtx         = "1.15.0"
+lifecycleKtx    = "2.9.0"
+activityCompose = "1.10.1"
 
 # Jetpack Compose
-composeBom      = "2024.04.01"
-# Compose compiler extension version must align with Kotlin version.
-# Kotlin 1.9.23 → Compose Compiler 1.5.11
-composeCompiler = "1.5.11"
+composeBom      = "2025.05.01"
+# Kotlin 2.1.0 uses the new Compose Compiler Gradle plugin — composeCompiler
+# version is now managed by the BOM/Kotlin plugin, not set manually.
+composeCompiler = "1.5.11"   # kept for composeOptions block; BOM overrides individual libs
 
 # Room (local database, fully offline)
-room            = "2.6.1"
+room            = "2.7.1"
 
 # WorkManager (background SMS send + retry)
-workmanager     = "2.9.0"
+workmanager     = "2.10.1"
 
 # Navigation (Compose NavHost)
-navigation      = "2.7.7"
+navigation      = "2.9.0"
 
 # ViewModel for Compose
-lifecycleVmCompose = "2.7.0"
+lifecycleVmCompose = "2.9.0"
 
 # Coroutines
-coroutines      = "1.8.0"
+coroutines      = "1.10.1"
 browser         = "1.8.0"
 
 
@@ -73,4 +73,5 @@ androidx-browser = { group = "androidx.browser", name = "browser", version.ref =
 [plugins]
 android-application = { id = "com.android.application",    version.ref = "agp" }
 kotlin-android      = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose      = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp                 = { id = "com.google.devtools.ksp",     version.ref = "ksp" }

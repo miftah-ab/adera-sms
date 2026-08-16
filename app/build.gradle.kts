@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)      // Required for Kotlin 2.x Compose compiler plugin
     alias(libs.plugins.ksp)
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
@@ -9,12 +10,12 @@ plugins {
 
 android {
     namespace  = "com.adera.sms"
-    compileSdk = 34
+    compileSdk = 36    // Android 16 — latest stable release
 
     defaultConfig {
         applicationId  = "com.adera.sms"
         minSdk         = 26   // Android 8.0 Oreo — covers Tecno/Infinix budget devices in Ethiopia
-        targetSdk      = 34   // Android 14
+        targetSdk      = 36   // Android 16 — latest stable release
         versionCode    = 3    // INCREMENT this for every release; used by forced-update mechanism (spec 12.6)
         versionName    = "1.0.2"
 
@@ -88,7 +89,8 @@ android {
         buildConfig = true   // Needed for BuildConfig.VERSION_CODE in update checker (Step 10)
     }
     composeOptions {
-        // Must align with Kotlin version — see libs.versions.toml for the version matrix
+        // With Kotlin 2.x, the Compose compiler is managed by the kotlin.compose plugin.
+        // This block is kept for backward compatibility with older toolchains.
         kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get()
     }
 }
@@ -130,7 +132,7 @@ dependencies {
     implementation(libs.androidx.browser)
 
     // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
+    implementation(platform("com.google.firebase:firebase-bom:33.13.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-crashlytics")
     implementation("com.google.firebase:firebase-perf")
