@@ -31,7 +31,6 @@ Thumbs.db
 
 # ---- Gradle ----
 .gradle/
-gradle/wrapper/gradle-wrapper.jar   # Binary — generated locally by "gradle wrapper"
 local.properties
 *.log
 
