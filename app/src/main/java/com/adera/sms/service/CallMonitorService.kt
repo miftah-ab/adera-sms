@@ -42,6 +42,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import java.security.MessageDigest
 import java.util.Calendar
+import java.util.concurrent.Executors
 import kotlin.coroutines.resume
 
 /**
@@ -133,6 +134,24 @@ class CallMonitorService : Service() {
 
     private val callStates = mutableMapOf<Int, PerSubState>()
 
+    /**
+     * Dedicated single-thread Executor for TelephonyCallback delivery (API 31+).
+     *
+     * WHY NOT mainExecutor:
+     *   mainExecutor is a Context property getter that returns the system-managed main-thread
+     *   Executor for this Context. On Android 15, Google tightened lifecycle enforcement for
+     *   foreground services of type `specialUse` running while the app has no visible activity.
+     *   In this state, mainExecutor-backed TelephonyCallback registrations can silently stop
+     *   delivering events — no crash, no exception, no logcat output. The service remains alive
+     *   (heartbeat stays fresh via serviceScope/Dispatchers.IO) but onCallStateChanged never fires.
+     *
+     *   Using a service-owned Executor eliminates this dependency on the system's context
+     *   lifecycle handle, making callback delivery reliable on Android 15.
+     */
+    private val telephonyExecutor = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "adera-telephony-cb").apply { isDaemon = false }
+    }
+
     @RequiresApi(Build.VERSION_CODES.S)
     private val telephonyCallbacks = mutableMapOf<Int, TelephonyCallback>()
 
@@ -168,6 +187,7 @@ class CallMonitorService : Service() {
     override fun onDestroy() {
         unregisterListeners()
         serviceScope.cancel()
+        telephonyExecutor.shutdown()
         Log.i(TAG, "CallMonitorService destroyed — will restart via START_STICKY")
         super.onDestroy()
     }
@@ -199,7 +219,7 @@ class CallMonitorService : Service() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val cb = newTelephonyCallback(subId)
                 telephonyCallbacks[subId] = cb
-                tm.registerTelephonyCallback(mainExecutor, cb)
+                tm.registerTelephonyCallback(telephonyExecutor, cb)
             } else {
                 @Suppress("DEPRECATION")
                 val listener = newPhoneStateListener(subId)
