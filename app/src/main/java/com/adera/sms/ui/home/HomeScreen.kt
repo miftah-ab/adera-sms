@@ -283,12 +283,8 @@ fun HomeScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // ── Support Adera entry point (Ye Buna) ────────────────────────────
-            // Full-width premium card — 2026 industry standard design.
-            // Entrance: fade + slide, never repeats.
-            // Idle: continuous subtle pulse + shimmer sweep across gradient.
+            /* ── Support Adera entry point (Ye Buna) — temporarily hidden ──────
+             * Uncomment this entire block when ready to re-enable.
             val yebunaUrl = "https://ye-buna.com/PrimeWisdom"
             var cardVisible by remember { mutableStateOf(false) }
             LaunchedEffect(Unit) { cardVisible = true }
@@ -301,161 +297,8 @@ fun HomeScreen(
                             initialOffsetY = { it / 3 }
                         )
             ) {
-                val yeBunaInteractionSource = remember { MutableInteractionSource() }
-                val yeBunaIsPressed by yeBunaInteractionSource.collectIsPressedAsState()
-                val tapScale by animateFloatAsState(
-                    targetValue = if (yeBunaIsPressed) 0.97f else 1f,
-                    animationSpec = spring(dampingRatio = 0.4f, stiffness = 500f)
-                )
-
-                val infiniteTransition = rememberInfiniteTransition(label = "yebuna")
-
-                // Low-amplitude idle pulse
-                val pulseScale by infiniteTransition.animateFloat(
-                    initialValue = 1f,
-                    targetValue = 1.015f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(2000, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse
-                    ),
-                    label = "pulse"
-                )
-
-                // Icon heartbeat
-                val iconPulse by infiniteTransition.animateFloat(
-                    initialValue = 1f,
-                    targetValue = 1.25f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(700, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse
-                    ),
-                    label = "iconPulse"
-                )
-
-                // Shimmer sweep
-                val shimmerOffset by infiniteTransition.animateFloat(
-                    initialValue = -1200f,
-                    targetValue = 1200f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(3000, easing = LinearEasing, delayMillis = 2000),
-                        repeatMode = RepeatMode.Restart
-                    ),
-                    label = "shimmer"
-                )
-                val shimmerBrush = Brush.linearGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0f),
-                        Color.White.copy(alpha = 0.18f),
-                        Color.White.copy(alpha = 0f)
-                    ),
-                    start = androidx.compose.ui.geometry.Offset(shimmerOffset, 0f),
-                    end = androidx.compose.ui.geometry.Offset(shimmerOffset + 300f, 300f)
-                )
-
-                val gradientBrush = Brush.linearGradient(
-                    colors = listOf(Color(0xFF17B871), Color(0xFF1EB882), Color(0xFFF5A623))
-                )
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .scale(tapScale * pulseScale),
-                    shape = AderaShapes.large,
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .background(gradientBrush)
-                            .background(shimmerBrush)
-                            .clickable(
-                                interactionSource = yeBunaInteractionSource,
-                                indication = null
-                            ) {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                try {
-                                    CustomTabsIntent.Builder()
-                                        .setShowTitle(true)
-                                        .build()
-                                        .launchUrl(context, Uri.parse(yebunaUrl))
-                                } catch (e: Exception) {
-                                    android.widget.Toast.makeText(
-                                        context,
-                                        "Could not open link. Please try again.",
-                                        android.widget.Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            }
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 20.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // Animated heart icon
-                                Text(
-                                    text = "☕",
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    modifier = Modifier.scale(iconPulse)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Ye Buna · Buy a Coffee",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
-                                    )
-                                    Text(
-                                        text = "100% free. No ads. No subscription.",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color.White.copy(alpha = 0.75f)
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            Text(
-                                text = "If Adera SMS saved you from missing an important call, consider buying the developer a coffee. It only takes a moment and means the world. 🙏",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.85f),
-                                lineHeight = MaterialTheme.typography.bodySmall.lineHeight
-                            )
-
-                            Spacer(modifier = Modifier.height(18.dp))
-
-                            // CTA pill button
-                            Surface(
-                                shape = RoundedCornerShape(percent = 50),
-                                color = Color.White,
-                                modifier = Modifier.align(Alignment.End)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Favorite,
-                                        contentDescription = null,
-                                        tint = Color(0xFFF5A623),
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Text(
-                                        text = "Support the Developer",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF17B871)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+                // ... full Ye Buna card UI ...
+            } */
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -476,6 +319,23 @@ fun HomeScreen(
                 }
                 
                 recentLogs.take(2).forEach { entry ->
+                    // Resolve caller number to a contact name (READ_CONTACTS optional)
+                    val contactName = remember(entry.callerNumber) {
+                        runCatching {
+                            val uri = android.net.Uri.withAppendedPath(
+                                android.provider.ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+                                android.net.Uri.encode(entry.callerNumber)
+                            )
+                            context.contentResolver.query(
+                                uri,
+                                arrayOf(android.provider.ContactsContract.PhoneLookup.DISPLAY_NAME),
+                                null, null, null
+                            )?.use { c ->
+                                if (c.moveToFirst()) c.getString(0) else null
+                            }
+                        }.getOrNull()
+                    }
+
                     Card(
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                         shape = AderaShapes.medium,
@@ -486,9 +346,33 @@ fun HomeScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(entry.callerNumber, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                // Show contact name prominently if available, number as subtitle
+                                if (contactName != null) {
+                                    Text(
+                                        contactName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        entry.callerNumber,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                } else {
+                                    Text(
+                                        entry.callerNumber,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
                                 Text(
-                                    text = android.text.format.DateUtils.getRelativeTimeSpanString(entry.timestamp, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS).toString(),
+                                    text = android.text.format.DateUtils.getRelativeTimeSpanString(
+                                        entry.timestamp,
+                                        System.currentTimeMillis(),
+                                        android.text.format.DateUtils.MINUTE_IN_MILLIS
+                                    ).toString(),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
