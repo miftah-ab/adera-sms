@@ -4,7 +4,9 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material3.*
@@ -24,9 +26,6 @@ import androidx.compose.ui.unit.dp
  * entire back stack before navigating here. The core service keeps running
  * (the user still gets auto-replies) but the UI is locked until they update.
  */
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-
 @Composable
 fun ForceUpdateScreen(downloadUrl: String) {
     val context = LocalContext.current
