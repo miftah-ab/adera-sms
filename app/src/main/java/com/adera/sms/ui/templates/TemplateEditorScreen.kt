@@ -71,11 +71,39 @@ fun TemplateEditorScreen(
     if (showComingSoonDialog) {
         AlertDialog(
             onDismissRequest = { showComingSoonDialog = false },
-            title = { Text("Coming Soon") },
-            text  = { Text("Creating new templates is coming soon. You can edit your existing templates in the meantime.") },
+            shape = AderaShapes.large,
+            icon = {
+                Icon(
+                    Icons.Rounded.Add,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            title = { 
+                Text(
+                    "Coming Soon",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                ) 
+            },
+            text  = { 
+                Text(
+                    "Creating custom templates is coming soon. You can edit your existing templates in the meantime.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                ) 
+            },
             confirmButton = {
-                TextButton(onClick = { showComingSoonDialog = false }) {
-                    Text("OK")
+                Button(
+                    onClick = { 
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        showComingSoonDialog = false 
+                    },
+                    shape = RoundedCornerShape(percent = 50),
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                ) {
+                    Text("OK", fontWeight = FontWeight.Bold)
                 }
             }
         )
@@ -287,8 +315,21 @@ private fun EditTemplateSheet(
         }
     )
 
+    val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val buttonScale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.5f, stiffness = 400f)
+    )
+
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(modifier = Modifier.padding(24.dp).padding(bottom = 32.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .androidx.compose.foundation.verticalScroll(androidx.compose.foundation.rememberScrollState())
+                .padding(24.dp)
+                .padding(bottom = 32.dp)
+        ) {
             Text(
                 if (template == null) "New Message" else "Edit Message",
                 style = MaterialTheme.typography.headlineSmall,
@@ -345,7 +386,11 @@ private fun EditTemplateSheet(
             Button(
                 onClick = { if (text.isNotBlank()) onSave(text.trim()) },
                 enabled = text.isNotBlank(),
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .androidx.compose.ui.draw.scale(buttonScale),
+                interactionSource = interactionSource,
                 shape = RoundedCornerShape(percent = 50)
             ) {
                 Text("Save", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)

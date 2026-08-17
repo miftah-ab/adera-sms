@@ -84,11 +84,19 @@ fun OnboardingScreen(onOnboardingComplete: () -> Unit) {
                         )
                     }
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(20.dp))
                 Button(
-                    onClick = { showPrivacySheet = false },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Close") }
+                    onClick = { 
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        showPrivacySheet = false 
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = RoundedCornerShape(percent = 50)
+                ) { 
+                    Text("Close", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) 
+                }
             }
         }
     }
@@ -117,11 +125,19 @@ fun OnboardingScreen(onOnboardingComplete: () -> Unit) {
                         )
                     }
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(20.dp))
                 Button(
-                    onClick = { showTermsSheet = false },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Close") }
+                    onClick = { 
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        showTermsSheet = false 
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = RoundedCornerShape(percent = 50)
+                ) { 
+                    Text("Close", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) 
+                }
             }
         }
     }

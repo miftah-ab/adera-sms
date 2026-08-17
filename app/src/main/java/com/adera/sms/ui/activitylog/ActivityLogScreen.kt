@@ -113,31 +113,51 @@ fun ActivityLogScreen(
         }
     }
 
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+
     // Item 7 — state for Failed explanation dialog
     var failedDialogEntry by remember { mutableStateOf<CallLogEntry?>(null) }
     if (failedDialogEntry != null) {
         AlertDialog(
             onDismissRequest = { failedDialogEntry = null },
+            shape = AderaShapes.large,
             icon = {
                 Icon(
                     Icons.Rounded.History,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(32.dp)
                 )
             },
-            title = { Text("Message May Not Have Sent") },
-            text = {
+            title = { 
                 Text(
-                    "The auto-reply for this missed call could not be delivered. " +
-                    "This is usually caused by insufficient SMS balance, " +
-                    "weak signal at the time of the call, or a temporary network issue. " +
-                    "If the problem persists, check your SIM's SMS balance or signal strength.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                    "Message May Not Have Sent", 
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                ) 
+            },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text(
+                        "The auto-reply for this missed call could not be delivered. " +
+                        "This is usually caused by insufficient SMS balance, " +
+                        "weak signal at the time of the call, or a temporary network issue. " +
+                        "If the problem persists, check your SIM's SMS balance or signal strength.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             },
             confirmButton = {
-                TextButton(onClick = { failedDialogEntry = null }) {
-                    Text("OK")
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                        failedDialogEntry = null
+                    },
+                    shape = RoundedCornerShape(percent = 50),
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                ) {
+                    Text("Understood", fontWeight = FontWeight.Bold)
                 }
             }
         )
@@ -165,32 +185,54 @@ fun ActivityLogScreen(
 
         AlertDialog(
             onDismissRequest = { limitDialogEntry = null },
+            shape = AderaShapes.large,
             icon = {
                 Icon(
                     Icons.Rounded.Warning,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(32.dp)
                 )
             },
-            title = { Text("Daily Limit Reached") },
+            title = { 
+                Text(
+                    "Daily Limit Reached",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                ) 
+            },
             text = {
-                Column {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     Text(
                         "To protect your carrier plan and prevent spam, Adera SMS is limited to sending 15 auto-replies every 24 hours.",
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = countdownText,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(percent = 50)
+                    ) {
+                        Text(
+                            text = countdownText,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { limitDialogEntry = null }) {
-                    Text("OK")
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                        limitDialogEntry = null
+                    },
+                    shape = RoundedCornerShape(percent = 50),
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                ) {
+                    Text("OK", fontWeight = FontWeight.Bold)
                 }
             }
         )

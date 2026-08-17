@@ -65,9 +65,31 @@ fun SettingsScreen(
     if (showClearDataDialog) {
         AlertDialog(
             onDismissRequest = { showClearDataDialog = false },
-            icon = { Icon(Icons.Rounded.Warning, contentDescription = "Warning", tint = MaterialTheme.colorScheme.error) },
-            title = { Text("Clear All Data?", style = MaterialTheme.typography.titleLarge) },
-            text = { Text("This will permanently delete all your templates, activity logs, and settings. This action cannot be undone.", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            shape = AderaShapes.large,
+            icon = { 
+                Icon(
+                    Icons.Rounded.Warning, 
+                    contentDescription = "Warning", 
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(32.dp)
+                ) 
+            },
+            title = { 
+                Text(
+                    "Clear All Data?", 
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                ) 
+            },
+            text = { 
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text(
+                        "This will permanently delete all your templates, activity logs, and settings. This action cannot be undone.", 
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    ) 
+                }
+            },
             confirmButton = {
                 Button(
                     onClick = {
@@ -75,14 +97,22 @@ fun SettingsScreen(
                         viewModel.clearAllData()
                         showClearDataDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    shape = RoundedCornerShape(percent = 50),
+                    modifier = Modifier.padding(horizontal = 4.dp)
                 ) {
-                    Text("Delete Everything", color = MaterialTheme.colorScheme.onError)
+                    Text("Delete Everything", color = MaterialTheme.colorScheme.onError, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showClearDataDialog = false }) {
-                    Text("Cancel")
+                OutlinedButton(
+                    onClick = { 
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                        showClearDataDialog = false 
+                    },
+                    shape = RoundedCornerShape(percent = 50)
+                ) {
+                    Text("Cancel", fontWeight = FontWeight.Medium)
                 }
             }
         )
@@ -112,11 +142,19 @@ fun SettingsScreen(
                         )
                     }
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(20.dp))
                 Button(
-                    onClick = { showPrivacySheet = false },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Close") }
+                    onClick = { 
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                        showPrivacySheet = false 
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = RoundedCornerShape(percent = 50)
+                ) { 
+                    Text("Close", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) 
+                }
             }
         }
     }

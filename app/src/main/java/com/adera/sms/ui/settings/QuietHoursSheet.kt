@@ -109,6 +109,13 @@ fun QuietHoursSheet(
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            val isPressed by interactionSource.collectIsPressedAsState()
+            val buttonScale by androidx.compose.animation.core.animateFloatAsState(
+                targetValue = if (isPressed) 0.96f else 1f,
+                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.5f, stiffness = 400f)
+            )
+
             Button(
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -125,7 +132,12 @@ fun QuietHoursSheet(
                     }
                     onDismissRequest()
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .androidx.compose.ui.draw.scale(buttonScale),
+                interactionSource = interactionSource,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(percent = 50)
             ) {
                 Text("Save", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
