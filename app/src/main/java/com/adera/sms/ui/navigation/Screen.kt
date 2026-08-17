@@ -3,6 +3,7 @@ package com.adera.sms.ui.navigation
 /** All navigable destinations in the app. */
 sealed class Screen(val route: String) {
     object Onboarding      : Screen("onboarding")
+    object Main            : Screen("main")
     object Home            : Screen("home")
     object TemplateEditor  : Screen("template_editor")
     object ActivityLog     : Screen("activity_log")

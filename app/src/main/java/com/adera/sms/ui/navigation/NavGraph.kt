@@ -6,13 +6,9 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.navArgument
-import com.adera.sms.ui.activitylog.ActivityLogScreen
-import com.adera.sms.ui.home.HomeScreen
+import com.adera.sms.ui.main.MainPagerScreen
 import com.adera.sms.ui.onboarding.OnboardingScreen
-import com.adera.sms.ui.settings.SettingsScreen
-import com.adera.sms.ui.templates.TemplateEditorScreen
 import com.adera.sms.ui.update.ForceUpdateScreen
 
 @Composable
@@ -29,67 +25,29 @@ fun AderaNavGraph(
         composable(Screen.Onboarding.route) {
             OnboardingScreen(
                 onOnboardingComplete = {
-                    navController.navigate(Screen.Home.route) {
+                    navController.navigate(Screen.Main.route) {
                         popUpTo(Screen.Onboarding.route) { inclusive = true }
                     }
                 }
             )
         }
 
-        composable(Screen.Home.route) {
-            HomeScreen(
-                onNavigateToTemplates = {
-                    // Use the same popUpTo/saveState/restoreState pattern as the
-                    // bottom navigation bar — ensures the bottom bar's selected-tab
-                    // state and the actual displayed destination never diverge.
-                    navController.navigate(Screen.TemplateEditor.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
-                        restoreState    = true
-                    }
-                },
-                onNavigateToLog = {
-                    // Same pattern — keeps nav state machine in sync with bottom bar.
-                    navController.navigate(Screen.ActivityLog.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
-                        restoreState    = true
-                    }
-                },
-                onNavigateToSettings = {
-                    navController.navigate(Screen.Settings.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
-                        restoreState    = true
+        composable(Screen.Main.route) {
+            MainPagerScreen(
+                onForceUpdate = { url ->
+                    navController.navigate(Screen.ForceUpdate.buildRoute(url)) {
+                        popUpTo(0) { inclusive = true }  // Clear entire back stack — cannot go back
                     }
                 }
             )
         }
 
-        composable(Screen.TemplateEditor.route) {
-            TemplateEditorScreen(
-                onBack = { navController.popBackStack() }
-            )
-        }
-
-        composable(Screen.ActivityLog.route) {
-            ActivityLogScreen(
-                onBack = { navController.popBackStack() }
-            )
-        }
-
-        composable(Screen.Settings.route) {
-            SettingsScreen(
-                onBack                 = { navController.popBackStack() },
-                onForceUpdate          = { url ->
+        // Backward compatibility alias for Home route
+        composable(Screen.Home.route) {
+            MainPagerScreen(
+                onForceUpdate = { url ->
                     navController.navigate(Screen.ForceUpdate.buildRoute(url)) {
-                        popUpTo(0) { inclusive = true }  // Clear entire back stack — cannot go back
+                        popUpTo(0) { inclusive = true }
                     }
                 }
             )
