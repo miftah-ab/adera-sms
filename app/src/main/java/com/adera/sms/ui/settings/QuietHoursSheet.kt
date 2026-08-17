@@ -1,12 +1,18 @@
 package com.adera.sms.ui.settings
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -108,11 +114,11 @@ fun QuietHoursSheet(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            val interactionSource = remember { MutableInteractionSource() }
             val isPressed by interactionSource.collectIsPressedAsState()
-            val buttonScale by androidx.compose.animation.core.animateFloatAsState(
+            val buttonScale by animateFloatAsState(
                 targetValue = if (isPressed) 0.96f else 1f,
-                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.5f, stiffness = 400f)
+                animationSpec = spring(dampingRatio = 0.5f, stiffness = 400f)
             )
 
             Button(
@@ -134,9 +140,9 @@ fun QuietHoursSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
-                    .androidx.compose.ui.draw.scale(buttonScale),
+                    .scale(buttonScale),
                 interactionSource = interactionSource,
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(percent = 50)
+                shape = RoundedCornerShape(percent = 50)
             ) {
                 Text("Save", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
