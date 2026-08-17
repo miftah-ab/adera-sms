@@ -282,19 +282,6 @@ fun SettingsScreen(
                     }
                 )
                 
-                Divider(modifier = Modifier.padding(start = 56.dp), color = MaterialTheme.colorScheme.outlineVariant)
-
-                // Diagnostic row — Heartbeat
-                SettingsRow(
-                    icon = Icons.Rounded.Info,
-                    title = "Service Diagnostic",
-                    subtitle = "Heartbeat: " + (settings?.lastServiceHeartbeat?.let {
-                        if (it == 0L) "Never" else {
-                            val diff = (System.currentTimeMillis() - it) / 60000
-                            if (diff == 0L) "Just now" else "$diff min ago"
-                        }
-                    } ?: "Unknown")
-                )
             }
 
             Spacer(modifier = Modifier.height(32.dp))

@@ -134,3 +134,87 @@ jobs:
       - name: Remove keystore from runner
         if: always() && startsWith(github.ref, 'refs/tags/v')
         run: rm -f keystore.jks
+
+      # -----------------------------------------------------------------------
+      # 6. Automate version.json + cross-repo APK publish (Item 10)
+      #
+      #    Required GitHub Actions secret (add under repo Settings → Secrets):
+      #      WEBSITE_DEPLOY_PAT
+      #        Type   : Fine-grained Personal Access Token
+      #        Scope  : miftah-ab/adera-sms-website repository ONLY
+      #        Perms  : Contents — Read and Write  (nothing broader)
+      #        Purpose: Allows this workflow to push the APK and version.json
+      #                 into the website repo's public/downloads folder.
+      #
+      #    How to create the token:
+      #      GitHub → Settings → Developer settings → Personal access tokens
+      #      → Fine-grained tokens → Generate new token
+      #      Set "Repository access" to: Only select repositories → adera-sms-website
+      #      Set "Permissions → Contents" to: Read and write
+      #      Copy the token and save it as the WEBSITE_DEPLOY_PAT secret.
+      #
+      #    minSupportedVersionCode is deliberately NOT auto-bumped here.
+      #    It stays at its previous value so existing users are not force-updated
+      #    on every release. Only raise it manually when a genuinely breaking
+      #    change requires all users to update.
+      # -----------------------------------------------------------------------
+
+      - name: Extract version numbers from build.gradle.kts
+        if: startsWith(github.ref, 'refs/tags/v')
+        id: version
+        run: |
+          # Read versionCode and versionName from the single source of truth.
+          # These are the same values the build itself used — they cannot drift.
+          VERSION_CODE=$(grep 'versionCode' app/build.gradle.kts | grep -oP '\d+' | head -1)
+          VERSION_NAME=$(grep 'versionName' app/build.gradle.kts | grep -oP '"[^"]+"' | head -1 | tr -d '"')
+          echo "version_code=$VERSION_CODE"  >> "$GITHUB_OUTPUT"
+          echo "version_name=$VERSION_NAME"  >> "$GITHUB_OUTPUT"
+          echo "Extracted versionCode=$VERSION_CODE versionName=$VERSION_NAME"
+
+      - name: Generate version.json
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          # Build version.json matching the existing structure used by the in-app
+          # update checker. minSupportedVersionCode is intentionally fixed at 1 here;
+          # bump it manually when a forced update is genuinely required.
+          VERSION_CODE="${{ steps.version.outputs.version_code }}"
+          VERSION_NAME="${{ steps.version.outputs.version_name }}"
+          cat > version.json <<EOF
+          {
+            "latestVersionCode": $VERSION_CODE,
+            "minSupportedVersionCode": 1,
+            "downloadUrl": "https://adera-sms.vercel.app/downloads/AderaSMS.apk",
+            "releaseNotes": "Version $VERSION_NAME — see GitHub release for details.",
+            "disableCoreService": false
+          }
+          EOF
+          echo "Generated version.json:"
+          cat version.json
+
+      - name: Push APK and version.json to adera-sms-website
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          # WEBSITE_DEPLOY_PAT must be a Fine-grained PAT with Contents read+write
+          # scoped only to miftah-ab/adera-sms-website. See comment above.
+          WEBSITE_DEPLOY_PAT: ${{ secrets.WEBSITE_DEPLOY_PAT }}
+        run: |
+          # Configure git identity for the commit
+          git config --global user.name  "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Clone the website repo using the PAT for authentication
+          git clone "https://x-access-token:${WEBSITE_DEPLOY_PAT}@github.com/miftah-ab/adera-sms-website.git" website-repo
+
+          # Copy APK (rename to the canonical filename the download URL points to)
+          cp "app/build/outputs/apk/release/Adera SMS.apk" "website-repo/public/downloads/AderaSMS.apk"
+
+          # Copy generated version.json
+          cp version.json "website-repo/public/downloads/version.json"
+
+          # Commit and push
+          cd website-repo
+          git add public/downloads/AderaSMS.apk public/downloads/version.json
+          git commit -m "release: Adera SMS ${{ steps.version.outputs.version_name }} (versionCode ${{ steps.version.outputs.version_code }})" \
+            --allow-empty
+          git push origin main
+          echo "Successfully pushed APK and version.json to adera-sms-website"

@@ -30,7 +30,6 @@ lifecycleVmCompose = "2.9.0"
 
 # Coroutines
 coroutines      = "1.10.1"
-browser         = "1.8.0"
 
 
 [libraries]
@@ -66,8 +65,6 @@ lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-
 # Coroutines
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 
-# Browser (Chrome Custom Tabs)
-androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 
 
 [plugins]

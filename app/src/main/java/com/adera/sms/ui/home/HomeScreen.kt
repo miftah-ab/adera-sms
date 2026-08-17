@@ -7,20 +7,8 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -46,7 +34,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.browser.customtabs.CustomTabsIntent
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adera.sms.ui.settings.QuietHoursSheet
@@ -283,23 +270,6 @@ fun HomeScreen(
                 }
             }
 
-            /* ── Support Adera entry point (Ye Buna) — temporarily hidden ──────
-             * Uncomment this entire block when ready to re-enable.
-            val yebunaUrl = "https://ye-buna.com/PrimeWisdom"
-            var cardVisible by remember { mutableStateOf(false) }
-            LaunchedEffect(Unit) { cardVisible = true }
-
-            AnimatedVisibility(
-                visible = cardVisible,
-                enter = fadeIn(animationSpec = tween(durationMillis = 600)) +
-                        slideInVertically(
-                            animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing),
-                            initialOffsetY = { it / 3 }
-                        )
-            ) {
-                // ... full Ye Buna card UI ...
-            } */
-
             Spacer(modifier = Modifier.height(24.dp))
 
             // Recent Activity Preview
@@ -422,8 +392,6 @@ fun HomeScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-
-            // Old Ye Buna location removed
         }
     }
 

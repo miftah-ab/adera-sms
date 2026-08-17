@@ -7,6 +7,8 @@ import android.util.Log
 import com.adera.sms.data.AppDatabase
 import com.adera.sms.data.entity.AppSettings
 import com.adera.sms.data.entity.MessageTemplate
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig
+import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -32,6 +34,7 @@ class AderaSmsApplication : Application() {
         super.onCreate()
         createNotificationChannels()
         seedDatabaseIfNeeded()
+        initRemoteConfig()
     }
 
     // ── Notification channel ──────────────────────────────────────────────────
@@ -108,9 +111,70 @@ class AderaSmsApplication : Application() {
             language = "am", isDefault = false, isPreset = true)
     )
 
+    // ── Firebase Remote Config (Items 7 & 8) ─────────────────────────────────
+
+    /**
+     * Initialises Remote Config with safe in-app defaults and fetches fresh values.
+     *
+     * KEY CONSTANTS (see [RC_KEY_DAILY_SEND_CAP] / [RC_KEY_FREE_TEMPLATE_LIMIT]):
+     *   daily_send_cap       — max SMS replies per 24-hour window (default: 15)
+     *   free_template_limit  — max custom templates on the free tier (default: 6)
+     *
+     * If Remote Config cannot be reached (offline, quota, etc.) the default values
+     * declared here are used — behaviour is identical to the previous hardcoded values.
+     *
+     * FETCH INTERVAL:
+     *   Production: 3600 s (1 hour) — standard Firebase recommendation.
+     *   The fetch is fire-and-forget; the activated values take effect on the NEXT
+     *   call to FirebaseRemoteConfig.getInstance().getLong(key). CallMonitorService and
+     *   TemplateViewModel read the value at the point of use, not at init time, so
+     *   fresh values are automatically picked up without an app restart.
+     *
+     * A/B TESTING (Item 8):
+     *   A/B experiments are configured entirely from the Firebase console against these
+     *   same Remote Config keys (e.g. test different Pro upsell wording by varying
+     *   free_template_limit between experiment variants). No additional app code is
+     *   required — A/B Testing is built into Remote Config.
+     */
+    private fun initRemoteConfig() {
+        val rc = FirebaseRemoteConfig.getInstance()
+
+        // Developer mode: allow frequent fetches during development.
+        // Remove or set minimumFetchIntervalInSeconds = 3600 before production release.
+        val settings = remoteConfigSettings {
+            minimumFetchIntervalInSeconds = 3600L
+        }
+        rc.setConfigSettingsAsync(settings)
+
+        // Defaults match the previously hardcoded values — no behaviour change if
+        // Remote Config cannot be fetched.
+        rc.setDefaultsAsync(
+            mapOf(
+                RC_KEY_DAILY_SEND_CAP      to 15L,
+                RC_KEY_FREE_TEMPLATE_LIMIT to 6L
+            )
+        )
+
+        // Fetch and activate in the background — failures are silent and safe.
+        rc.fetchAndActivate().addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                Log.i(TAG, "Remote Config fetch+activate succeeded. " +
+                    "daily_send_cap=${rc.getLong(RC_KEY_DAILY_SEND_CAP)} " +
+                    "free_template_limit=${rc.getLong(RC_KEY_FREE_TEMPLATE_LIMIT)}")
+            } else {
+                Log.w(TAG, "Remote Config fetch failed — using defaults", task.exception)
+            }
+        }
+    }
+
     companion object {
         private const val TAG = "AderaSMS"
-        const val CHANNEL_ID_SERVICE    = "adera_service_channel"
+        const val CHANNEL_ID_SERVICE      = "adera_service_channel"
         const val NOTIFICATION_ID_SERVICE = 1001
+
+        // Remote Config keys — shared constants so CallMonitorService and
+        // TemplateViewModel use the exact same key strings.
+        const val RC_KEY_DAILY_SEND_CAP      = "daily_send_cap"
+        const val RC_KEY_FREE_TEMPLATE_LIMIT = "free_template_limit"
     }
 }

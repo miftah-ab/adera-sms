@@ -141,12 +141,15 @@ dependencies {
     // Coroutines — service scope, DAO suspend functions, worker async
     implementation(libs.kotlinx.coroutines.android)
 
-    // Browser — Chrome Custom Tabs for Ye Buna payment link
-    implementation(libs.androidx.browser)
 
-    // Firebase
+    // Firebase (BOM pins all SDK versions consistently)
     implementation(platform("com.google.firebase:firebase-bom:33.13.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-crashlytics")
     implementation("com.google.firebase:firebase-perf")
+    implementation("com.google.firebase:firebase-inappmessaging-display")  // Item 5: contextual Pro upgrade prompts
+    implementation("com.google.firebase:firebase-messaging")               // Item 6: push notification support
+    implementation("com.google.firebase:firebase-config")                  // Item 7: remote-adjustable values (daily cap, template limit)
+    // Item 8: A/B Testing is built into Remote Config — available from the
+    // Firebase console once firebase-config is integrated. No additional SDK needed.
 }

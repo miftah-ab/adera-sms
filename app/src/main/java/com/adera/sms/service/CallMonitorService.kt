@@ -46,6 +46,10 @@ import java.security.MessageDigest
 import java.util.Calendar
 import java.util.concurrent.Executors
 import kotlin.coroutines.resume
+import com.adera.sms.AderaSmsApplication
+import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.google.firebase.inappmessaging.FirebaseInAppMessaging
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 
 /**
  * Foreground service that monitors phone call state and sends auto-reply SMS on missed calls.
@@ -170,9 +174,19 @@ class CallMonitorService : Service() {
         super.onCreate()
         database = AppDatabase.getInstance(applicationContext)
         startForegroundWithNotification()
-        registerListeners()
+        val subIds = activeSubscriptionIds()
+        registerListeners(subIds)
+
+        // Crashlytics custom keys (Item 9) — device context for future crash reports.
+        // These are set once per service lifecycle and appear in every crash report
+        // generated while the service is alive.
+        val crashlytics = FirebaseCrashlytics.getInstance()
+        crashlytics.setCustomKey("android_version", Build.VERSION.SDK_INT)
+        crashlytics.setCustomKey("active_sim_count", subIds.size)
+        crashlytics.log("CallMonitorService started: SDK=${Build.VERSION.SDK_INT} sims=${subIds.size}")
+
         Log.i(TAG, "CallMonitorService started")
-        
+
         serviceScope.launch {
             while (isActive) {
                 try {
@@ -218,6 +232,10 @@ class CallMonitorService : Service() {
 
     private fun registerListeners() {
         val subIds = activeSubscriptionIds()
+        registerListeners(subIds)
+    }
+
+    private fun registerListeners(subIds: List<Int>) {
         Log.d(TAG, "Registering listeners for subscriptions: $subIds")
         subIds.forEach { subId ->
             callStates[subId] = PerSubState()
@@ -298,21 +316,26 @@ class CallMonitorService : Service() {
     // ── State machine ─────────────────────────────────────────────────────────
 
     private fun onStateChange(state: Int, phoneNumber: String?, subId: Int) {
+        val crashlytics = FirebaseCrashlytics.getInstance()
         val s = callStates.getOrPut(subId) { PerSubState() }
         when (state) {
             TelephonyManager.CALL_STATE_RINGING -> {
                 s.isRinging    = true
                 s.isOffHook    = false
                 s.callerNumber = phoneNumber
+                // Breadcrumb: call state received (Item 9)
+                crashlytics.log("CALL_STATE_RINGING subId=$subId hasNumber=${phoneNumber != null}")
                 Log.d(TAG, "RINGING subId=$subId")
             }
             TelephonyManager.CALL_STATE_OFFHOOK -> {
                 s.isOffHook = true
+                crashlytics.log("CALL_STATE_OFFHOOK (answered) subId=$subId")
                 Log.d(TAG, "OFFHOOK (answered) subId=$subId")
             }
             TelephonyManager.CALL_STATE_IDLE -> {
                 if (s.isRinging && !s.isOffHook) {
                     val numberSnapshot = s.callerNumber
+                    crashlytics.log("CALL_STATE_IDLE: missed call detected subId=$subId hasNumber=${numberSnapshot != null}")
                     Log.i(TAG, "MISSED CALL detected subId=$subId hasNumber=${numberSnapshot != null}")
                     serviceScope.launch { processMissedCall(numberSnapshot, subId) }
                 }
@@ -324,46 +347,72 @@ class CallMonitorService : Service() {
     // ── Core missed-call processing ───────────────────────────────────────────
 
     private suspend fun processMissedCall(directNumber: String?, subId: Int) {
+        val crashlytics = FirebaseCrashlytics.getInstance()
+
+        // Step 1: resolve caller number
         val callerNumber = directNumber
-            ?: withTimeoutOrNull(5_000L) { queryCallLogForMissedNumber() }
+            ?: withTimeoutOrNull(5_000L) {
+                crashlytics.log("Querying call log for missed number (TelephonyCallback path)")
+                queryCallLogForMissedNumber()
+            }
             ?: run {
+                crashlytics.log("processMissedCall: call log not updated within 5 s — skipping")
                 Log.w(TAG, "processMissedCall: call log not updated within 5 s — skipping auto-reply")
                 return
             }
 
+        crashlytics.log("Caller number resolved. Checking settings...")
+
         val settings = database.settingsDao().getSettings() ?: run {
+            crashlytics.log("Settings not found in DB — skipping")
             Log.e(TAG, "Settings not found in DB — skipping"); return
         }
 
         if (!settings.autoReplyEnabled) {
+            crashlytics.log("Auto-reply OFF — skipping")
             Log.d(TAG, "Auto-reply OFF — skipping"); return
         }
 
+        // Step 2: quiet hours check
         if (isWithinQuietHours(settings)) {
+            crashlytics.log("Quiet hours active — suppressing reply")
             Log.d(TAG, "Quiet hours active — suppressing")
             writeLogEntry(callerNumber, subId, CallStatus.SUPPRESSED_QUIET_HOURS)
             return
         }
 
+        // Step 3: per-number cooldown check
         val hash = sha256(callerNumber)
         if (isInCooldown(hash)) {
+            crashlytics.log("Cooldown active — suppressing duplicate reply")
             Log.d(TAG, "Cooldown active — suppressing duplicate")
             writeLogEntry(callerNumber, subId, CallStatus.SUPPRESSED_COOLDOWN)
             return
         }
 
-        val since24h = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
-        val sentCount = database.callLogDao().countSentSince(since24h)
-        if (sentCount >= 15) {
+        // Step 4: daily cap check — value from Remote Config (default 15)
+        val dailyCap = FirebaseRemoteConfig.getInstance()
+            .getLong(AderaSmsApplication.RC_KEY_DAILY_SEND_CAP).toInt()
+        val since24h   = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
+        val sentCount  = database.callLogDao().countSentSince(since24h)
+        crashlytics.log("Daily cap check: sentToday=$sentCount cap=$dailyCap")
+        if (sentCount >= dailyCap) {
+            crashlytics.log("Daily cap reached ($sentCount/$dailyCap) — suppressing reply")
             Log.d(TAG, "Daily limit reached — suppressing duplicate")
             writeLogEntry(callerNumber, subId, CallStatus.DAILY_LIMIT_REACHED)
+            // Trigger In-App Messaging contextual campaign (Item 5)
+            FirebaseInAppMessaging.getInstance().triggerEvent("daily_cap_reached")
             return
         }
 
+        // Step 5: fetch default template
         val template = database.templateDao().getDefaultTemplate() ?: run {
+            crashlytics.log("No default template found — cannot send SMS")
             Log.e(TAG, "No default template — cannot send SMS"); return
         }
 
+        // Step 6: enqueue SMS send
+        crashlytics.log("Enqueuing SmsSenderWorker for subId=$subId")
         val logId = database.callLogDao().insertEntry(
             CallLogEntry(
                 callerNumber       = callerNumber,
@@ -376,6 +425,7 @@ class CallMonitorService : Service() {
 
         val request = SmsSenderWorker.buildRequest(callerNumber, subId, template.text, logId)
         WorkManager.getInstance(applicationContext).enqueue(request)
+        crashlytics.log("SmsSenderWorker enqueued logId=$logId subId=$subId")
         Log.i(TAG, "SmsSenderWorker enqueued logId=$logId subId=$subId")
     }
 

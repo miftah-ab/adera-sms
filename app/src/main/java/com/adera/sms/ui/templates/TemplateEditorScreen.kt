@@ -27,6 +27,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adera.sms.data.entity.MessageTemplate
 import com.adera.sms.service.SmsSenderWorker
 import com.adera.sms.ui.theme.AderaShapes
+import kotlinx.coroutines.launch
 
 /**
  * Calculates SMS segment info accounting for encoding.
@@ -160,19 +161,31 @@ fun TemplateEditorScreen(
     }
 
     if (showEditSheet) {
+        val scope = androidx.compose.runtime.rememberCoroutineScope()
         EditTemplateSheet(
             template = templateToEdit,
             language = selectedLang,
             onSave = { text ->
                 val current = templateToEdit
                 if (current == null) {
-                    viewModel.saveCustomTemplate(text, selectedLang)
+                    // saveCustomTemplate is suspend — launch from scope.
+                    // If the limit is hit it returns false and the IAM prompt fires;
+                    // keep the sheet open so the user's text is preserved.
+                    scope.launch {
+                        val saved = viewModel.saveCustomTemplate(text, selectedLang)
+                        if (saved) {
+                            showEditSheet = false
+                            templateToEdit = null
+                        }
+                        // If not saved (limit hit), the In-App Messaging prompt fires
+                        // automatically; the sheet remains open with the user's text.
+                    }
                 } else {
                     // Fix #5: update the existing row — do NOT insert a duplicate
                     viewModel.updateCustomTemplate(current.copy(text = text.trim()))
+                    showEditSheet = false
+                    templateToEdit = null
                 }
-                showEditSheet = false
-                templateToEdit = null
             },
             onDismiss = {
                 showEditSheet = false

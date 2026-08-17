@@ -6,6 +6,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.navArgument
 import com.adera.sms.ui.activitylog.ActivityLogScreen
 import com.adera.sms.ui.home.HomeScreen
@@ -37,9 +38,37 @@ fun AderaNavGraph(
 
         composable(Screen.Home.route) {
             HomeScreen(
-                onNavigateToTemplates  = { navController.navigate(Screen.TemplateEditor.route) },
-                onNavigateToLog        = { navController.navigate(Screen.ActivityLog.route) },
-                onNavigateToSettings   = { navController.navigate(Screen.Settings.route) }
+                onNavigateToTemplates = {
+                    // Use the same popUpTo/saveState/restoreState pattern as the
+                    // bottom navigation bar — ensures the bottom bar's selected-tab
+                    // state and the actual displayed destination never diverge.
+                    navController.navigate(Screen.TemplateEditor.route) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState    = true
+                    }
+                },
+                onNavigateToLog = {
+                    // Same pattern — keeps nav state machine in sync with bottom bar.
+                    navController.navigate(Screen.ActivityLog.route) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState    = true
+                    }
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState    = true
+                    }
+                }
             )
         }
 
