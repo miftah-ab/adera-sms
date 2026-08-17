@@ -46,7 +46,6 @@ import java.security.MessageDigest
 import java.util.Calendar
 import java.util.concurrent.Executors
 import kotlin.coroutines.resume
-import com.adera.sms.AderaSmsApplication
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.inappmessaging.FirebaseInAppMessaging
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
