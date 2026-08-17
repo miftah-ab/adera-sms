@@ -13,6 +13,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.util.*
 
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+
 /**
  * Quiet Hours bottom sheet.
  *
@@ -27,6 +30,7 @@ fun QuietHoursSheet(
     onDismissRequest: () -> Unit,
     viewModel: SettingsViewModel = viewModel()
 ) {
+    val haptic = LocalHapticFeedback.current
     val settings by viewModel.settings.collectAsStateWithLifecycle()
 
     // Don't render until settings is loaded from DB — ensures pickers always
@@ -107,6 +111,7 @@ fun QuietHoursSheet(
 
             Button(
                 onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     if (isEnabled) {
                         // Read from picker state at click time — this is the source of truth
                         val startMinutes = startTimeState.hour * 60 + startTimeState.minute

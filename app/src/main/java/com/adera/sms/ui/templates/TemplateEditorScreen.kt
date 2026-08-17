@@ -47,12 +47,16 @@ private fun smsSegmentInfo(userText: String, signature: String): Pair<Int, Int> 
     return Pair(segments, charsInLastSeg)
 }
 
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TemplateEditorScreen(
     onBack: () -> Unit,
     viewModel: TemplateViewModel = viewModel()
 ) {
+    val haptic = LocalHapticFeedback.current
     val templates by viewModel.templates.collectAsStateWithLifecycle(initialValue = emptyList())
     var selectedLang by remember { mutableStateOf("en") }
 
@@ -90,7 +94,7 @@ fun TemplateEditorScreen(
                 Text("Templates", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Segmented control
+                // Segmented control with 48dp min touch target
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -103,9 +107,15 @@ fun TemplateEditorScreen(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
+                                .heightIn(min = 48.dp)
                                 .clip(RoundedCornerShape(50))
                                 .background(containerColor)
-                                .clickable { selectedLang = code }
+                                .clickable { 
+                                    if (selectedLang != code) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        selectedLang = code 
+                                    }
+                                }
                                 .padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -132,7 +142,7 @@ fun TemplateEditorScreen(
                         .height(56.dp),
                     shape = RoundedCornerShape(percent = 50)
                 ) {
-                    Icon(Icons.Rounded.Add, contentDescription = null)
+                    Icon(Icons.Rounded.Add, contentDescription = "Add new template")
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("New Template", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
@@ -150,7 +160,10 @@ fun TemplateEditorScreen(
             items(filtered, key = { it.id }) { template ->
                 TemplateCard(
                     template = template,
-                    onSetDefault = { viewModel.setDefault(template.id) },
+                    onSetDefault = { 
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.setDefault(template.id) 
+                    },
                     onEdit = {
                         templateToEdit = template
                         showEditSheet = true
@@ -166,6 +179,7 @@ fun TemplateEditorScreen(
             template = templateToEdit,
             language = selectedLang,
             onSave = { text ->
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 val current = templateToEdit
                 if (current == null) {
                     // saveCustomTemplate is suspend — launch from scope.
@@ -265,10 +279,10 @@ private fun EditTemplateSheet(
     val (segmentCount, _) = remember(text) { smsSegmentInfo(text, SmsSenderWorker.SIGNATURE) }
     val fullLength = text.length + SmsSenderWorker.SIGNATURE.length
 
+    // WCAG 2.2 compliant contrast: high-contrast error for > 1 segment warnings, onSurfaceVariant for standard
     val counterColor by animateColorAsState(
         targetValue = when {
-            segmentCount > 2 -> MaterialTheme.colorScheme.error
-            segmentCount > 1 -> MaterialTheme.colorScheme.secondary
+            segmentCount > 1 -> MaterialTheme.colorScheme.error
             else             -> MaterialTheme.colorScheme.onSurfaceVariant
         }
     )

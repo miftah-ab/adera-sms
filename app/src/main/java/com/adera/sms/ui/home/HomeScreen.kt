@@ -275,17 +275,22 @@ fun HomeScreen(
             // Recent Activity Preview
             if (recentLogs.isNotEmpty()) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("RECENT ACTIVITY", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(
-                        "View all", 
-                        style = MaterialTheme.typography.labelMedium, 
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { onNavigateToLog() }
-                    )
+                    TextButton(
+                        onClick = { onNavigateToLog() },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            "View all", 
+                            style = MaterialTheme.typography.labelMedium, 
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
                 
                 recentLogs.take(2).forEach { entry ->

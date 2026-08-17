@@ -24,6 +24,9 @@ import androidx.compose.ui.unit.dp
  * entire back stack before navigating here. The core service keeps running
  * (the user still gets auto-replies) but the UI is locked until they update.
  */
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+
 @Composable
 fun ForceUpdateScreen(downloadUrl: String) {
     val context = LocalContext.current
@@ -33,7 +36,10 @@ fun ForceUpdateScreen(downloadUrl: String) {
         color = MaterialTheme.colorScheme.background
     ) {
         Column(
-            modifier = Modifier.padding(32.dp).fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {

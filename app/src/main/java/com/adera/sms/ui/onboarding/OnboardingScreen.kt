@@ -28,10 +28,16 @@ import androidx.activity.compose.BackHandler
 import com.adera.sms.data.AppDatabase
 import kotlinx.coroutines.launch
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OnboardingScreen(onOnboardingComplete: () -> Unit) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     var agreed by remember { mutableStateOf(false) }
 
@@ -127,10 +133,11 @@ fun OnboardingScreen(onOnboardingComplete: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(32.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 32.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.weight(0.3f))
+            Spacer(modifier = Modifier.height(32.dp))
 
             // Hero Area
             Text(
@@ -140,7 +147,7 @@ fun OnboardingScreen(onOnboardingComplete: () -> Unit) {
                 fontWeight = FontWeight.Bold
             )
             
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(40.dp))
 
             Text(
                 text = "Adera SMS replies to missed calls automatically, entirely on your phone.",
@@ -159,11 +166,20 @@ fun OnboardingScreen(onOnboardingComplete: () -> Unit) {
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.weight(0.7f))
+            Spacer(modifier = Modifier.height(48.dp))
 
-            // Consent Checkbox Row
+            // Consent Checkbox Row with expanded tappable area
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        agreed = !agreed
+                    }
+                    .padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Checkbox(
@@ -193,11 +209,16 @@ fun OnboardingScreen(onOnboardingComplete: () -> Unit) {
                     text = annotatedString,
                     style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
                     onClick = { offset ->
-                        annotatedString.getStringAnnotations(tag = "privacy", start = offset, end = offset).firstOrNull()?.let {
+                        val privacyAnnotation = annotatedString.getStringAnnotations(tag = "privacy", start = offset, end = offset).firstOrNull()
+                        val termsAnnotation = annotatedString.getStringAnnotations(tag = "terms", start = offset, end = offset).firstOrNull()
+                        
+                        if (privacyAnnotation != null) {
                             showPrivacySheet = true
-                        }
-                        annotatedString.getStringAnnotations(tag = "terms", start = offset, end = offset).firstOrNull()?.let {
+                        } else if (termsAnnotation != null) {
                             showTermsSheet = true
+                        } else {
+                            // Tapping plain text toggles the checkbox
+                            agreed = !agreed
                         }
                     }
                 )
@@ -218,6 +239,7 @@ fun OnboardingScreen(onOnboardingComplete: () -> Unit) {
             Button(
                 onClick = {
                     if (agreed) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         scope.launch(kotlinx.coroutines.Dispatchers.IO) {
                             val db = AppDatabase.getInstance(context)
                             db.settingsDao().markConsentGiven(System.currentTimeMillis())
@@ -231,15 +253,15 @@ fun OnboardingScreen(onOnboardingComplete: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
-                    .scale(scale), // Apply spring physics scale
+                    .scale(scale),
                 interactionSource = interactionSource,
                 enabled = agreed,
-                shape = RoundedCornerShape(percent = 50) // Fully rounded per M3 Expressive
+                shape = RoundedCornerShape(percent = 50)
             ) {
                 Text("Continue", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
