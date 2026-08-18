@@ -389,18 +389,28 @@ class CallMonitorService : Service() {
             return
         }
 
-        // Step 4: daily cap check — value from Remote Config (default 15)
-        val dailyCap = FirebaseRemoteConfig.getInstance()
-            .getLong(AderaSmsApplication.RC_KEY_DAILY_SEND_CAP).toInt()
+        // Step 4: daily cap check — value from Remote Config with guaranteed default fallback
+        val rcCap = try {
+            FirebaseRemoteConfig.getInstance()
+                .getLong(AderaSmsApplication.RC_KEY_DAILY_SEND_CAP).toInt()
+        } catch (e: Exception) {
+            0
+        }
+        val dailyCap = if (rcCap > 0) rcCap else AderaSmsApplication.DEFAULT_DAILY_SEND_CAP
+
         val since24h   = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
         val sentCount  = database.callLogDao().countSentSince(since24h)
-        crashlytics.log("Daily cap check: sentToday=$sentCount cap=$dailyCap")
+        crashlytics.log("Daily cap check: sentToday=$sentCount cap=$dailyCap (rcCap=$rcCap)")
         if (sentCount >= dailyCap) {
             crashlytics.log("Daily cap reached ($sentCount/$dailyCap) — suppressing reply")
             Log.d(TAG, "Daily limit reached — suppressing duplicate")
             writeLogEntry(callerNumber, subId, CallStatus.DAILY_LIMIT_REACHED)
             // Trigger In-App Messaging contextual campaign (Item 5)
-            FirebaseInAppMessaging.getInstance().triggerEvent("daily_cap_reached")
+            try {
+                FirebaseInAppMessaging.getInstance().triggerEvent("daily_cap_reached")
+            } catch (e: Exception) {
+                Log.w(TAG, "InAppMessaging trigger failed", e)
+            }
             return
         }
 

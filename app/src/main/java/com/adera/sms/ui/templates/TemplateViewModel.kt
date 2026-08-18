@@ -37,8 +37,13 @@ class TemplateViewModel(app: Application) : AndroidViewModel(app) {
      * @return true if the template was saved, false if the limit was hit.
      */
     suspend fun saveCustomTemplate(text: String, language: String): Boolean {
-        val freeLimit = FirebaseRemoteConfig.getInstance()
-            .getLong(AderaSmsApplication.RC_KEY_FREE_TEMPLATE_LIMIT).toInt()
+        val rcLimit = try {
+            FirebaseRemoteConfig.getInstance()
+                .getLong(AderaSmsApplication.RC_KEY_FREE_TEMPLATE_LIMIT).toInt()
+        } catch (e: Exception) {
+            0
+        }
+        val freeLimit = if (rcLimit > 0) rcLimit else AderaSmsApplication.DEFAULT_FREE_TEMPLATE_LIMIT
 
         // Count only user-created (non-preset) templates against the free limit.
         val currentCustomCount = db.templateDao().getAllTemplates()
@@ -49,7 +54,11 @@ class TemplateViewModel(app: Application) : AndroidViewModel(app) {
             // The campaign "template_limit_hit" is configured in the Firebase console;
             // it will display a dismissible message informing the user that Pro removes
             // this limit. No blocking dialog is shown from app code.
-            FirebaseInAppMessaging.getInstance().triggerEvent("template_limit_hit")
+            try {
+                FirebaseInAppMessaging.getInstance().triggerEvent("template_limit_hit")
+            } catch (e: Exception) {
+                // Ignore if In-App Messaging is unavailable
+            }
             return false
         }
 

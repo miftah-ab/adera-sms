@@ -16,8 +16,8 @@ android {
         applicationId  = "com.adera.sms"
         minSdk         = 26   // Android 8.0 Oreo — covers Tecno/Infinix budget devices in Ethiopia
         targetSdk      = 36   // Android 16 — latest stable release
-        versionCode    = 3    // INCREMENT this for every release; used by forced-update mechanism (spec 12.6)
-        versionName    = "1.0.2"
+        versionCode    = 4    // INCREMENT this for every release; used by forced-update mechanism (spec 12.6)
+        versionName    = "1.0.3"
 
         // Export Room schema for migration history tracking
         ksp {

@@ -172,6 +172,10 @@ class AderaSmsApplication : Application() {
         const val CHANNEL_ID_SERVICE      = "adera_service_channel"
         const val NOTIFICATION_ID_SERVICE = 1001
 
+        // Default fallback values guaranteed if Remote Config returns 0 or fails to fetch
+        const val DEFAULT_DAILY_SEND_CAP      = 15
+        const val DEFAULT_FREE_TEMPLATE_LIMIT = 6
+
         // Remote Config keys — shared constants so CallMonitorService and
         // TemplateViewModel use the exact same key strings.
         const val RC_KEY_DAILY_SEND_CAP      = "daily_send_cap"
