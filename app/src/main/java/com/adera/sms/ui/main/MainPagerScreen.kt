@@ -87,7 +87,8 @@ fun MainPagerScreen(
                     },
                     onNavigateToSettings = {
                         scope.launch { pagerState.animateScrollToPage(3) }
-                    }
+                    },
+                    onForceUpdate = onForceUpdate
                 )
                 1 -> TemplateEditorScreen(
                     onBack = {

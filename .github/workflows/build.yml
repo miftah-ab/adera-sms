@@ -89,6 +89,19 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: mv app/build/outputs/apk/release/app-release.apk "app/build/outputs/apk/release/Adera SMS.apk"
 
+      # -----------------------------------------------------------------------
+      # SHA-256 of the final signed APK — computed immediately after rename so
+      # it covers the exact artifact that gets uploaded and published.
+      # Stored as a step output and injected into version.json below.
+      # -----------------------------------------------------------------------
+      - name: Compute APK SHA-256
+        if: startsWith(github.ref, 'refs/tags/v')
+        id: sha256
+        run: |
+          APK_SHA256=$(sha256sum "app/build/outputs/apk/release/Adera SMS.apk" | awk '{print $1}')
+          echo "apk_sha256=$APK_SHA256" >> "$GITHUB_OUTPUT"
+          echo "SHA-256: $APK_SHA256"
+
       - name: Upload Signed Release APK (tag builds only)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
@@ -177,15 +190,18 @@ jobs:
           # Build version.json matching the existing structure used by the in-app
           # update checker. minSupportedVersionCode is intentionally fixed at 1 here;
           # bump it manually when a forced update is genuinely required.
+          # sha256 is the hash of the exact signed APK artifact computed in the previous step.
           VERSION_CODE="${{ steps.version.outputs.version_code }}"
           VERSION_NAME="${{ steps.version.outputs.version_name }}"
+          APK_SHA256="${{ steps.sha256.outputs.apk_sha256 }}"
           cat > version.json <<EOF
           {
             "latestVersionCode": $VERSION_CODE,
             "minSupportedVersionCode": 1,
             "downloadUrl": "https://adera-sms.vercel.app/downloads/AderaSMS.apk",
             "releaseNotes": "Version $VERSION_NAME — see GitHub release for details.",
-            "disableCoreService": false
+            "disableCoreService": false,
+            "sha256": "$APK_SHA256"
           }
           EOF
           echo "Generated version.json:"

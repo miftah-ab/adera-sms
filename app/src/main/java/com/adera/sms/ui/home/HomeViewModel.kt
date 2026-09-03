@@ -12,11 +12,15 @@ import com.adera.sms.data.entity.AppSettings
 import com.adera.sms.data.entity.MessageTemplate
 import com.adera.sms.service.CallMonitorService
 import com.adera.sms.data.entity.CallLogEntry
+import com.adera.sms.update.UpdateChecker
+import com.adera.sms.update.UpdateStatus
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class PermissionStatus(
     val hasPhoneState: Boolean,
@@ -41,8 +45,21 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     val recentLogs: StateFlow<List<CallLogEntry>> = db.callLogDao().observeRecent(3)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    private val _updateStatus = MutableStateFlow<UpdateStatus?>(null)
+    val updateStatus: StateFlow<UpdateStatus?> = _updateStatus
+
     private val _permissionStatus = MutableStateFlow(checkPermissions())
     val permissionStatus: StateFlow<PermissionStatus> = _permissionStatus
+
+    init {
+        // Automatic update check on first load — does not block the UI.
+        // Result is surfaced as a dismissible soft banner on HomeScreen.
+        // Network errors are swallowed by UpdateChecker.check() itself (returns Error).
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) { UpdateChecker.check(getApplication()) }
+            _updateStatus.value = result
+        }
+    }
 
     /** Called from onResume to pick up permission changes while app was backgrounded. */
     fun refreshPermissions() {

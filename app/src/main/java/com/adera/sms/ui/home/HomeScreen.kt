@@ -34,10 +34,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adera.sms.ui.settings.QuietHoursSheet
 import com.adera.sms.ui.theme.AderaShapes
+import com.adera.sms.update.UpdateStatus
+import com.adera.sms.update.VersionInfo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,6 +49,7 @@ fun HomeScreen(
     onNavigateToTemplates: () -> Unit,
     onNavigateToLog: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onForceUpdate: (String) -> Unit,
     viewModel: HomeViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -54,15 +59,36 @@ fun HomeScreen(
     val template by viewModel.defaultTemplate.collectAsStateWithLifecycle()
     val permissions by viewModel.permissionStatus.collectAsStateWithLifecycle()
     val recentLogs by viewModel.recentLogs.collectAsStateWithLifecycle()
+    val updateStatus by viewModel.updateStatus.collectAsStateWithLifecycle()
 
     val isOn = settings?.autoReplyEnabled == true
 
     var showQuietHoursSheet by remember { mutableStateOf(false) }
+    var updateBannerDismissed by remember { mutableStateOf(false) }
 
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
         viewModel.refreshPermissions()
+    }
+
+    // Re-check permission and battery state on every Activity resume.
+    // Covers returning from battery optimisation settings (which goes through
+    // direct startActivity, not through permLauncher) and any other system
+    // screen the user may have visited while the app was backgrounded.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        viewModel.refreshPermissions()
+    }
+
+    // Force-update gate: if the automatic update check (run in HomeViewModel.init)
+    // determines the installed version is below minSupportedVersionCode, navigate
+    // immediately. Without this, a user who never opens the Settings tab would
+    // never reach ForceUpdateScreen on a critically outdated build.
+    LaunchedEffect(updateStatus) {
+        val s = updateStatus
+        if (s is UpdateStatus.ForceUpdate) {
+            onForceUpdate(s.info.downloadUrl)
+        }
     }
 
     Scaffold(
@@ -164,6 +190,17 @@ fun HomeScreen(
                         }
                     }
                 }
+            }
+
+            // Soft update banner — shown when a newer version is available but the current
+            // one is still permitted to run. Dismissed for the session only; reappears on
+            // next launch. Does not block any functionality.
+            if (updateStatus is UpdateStatus.UpdateAvailable && !updateBannerDismissed) {
+                SoftUpdateBanner(
+                    info = (updateStatus as UpdateStatus.UpdateAvailable).info,
+                    onDismiss = { updateBannerDismissed = true },
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
             }
 
             // Master Toggle Card
@@ -402,5 +439,80 @@ fun HomeScreen(
 
     if (showQuietHoursSheet) {
         QuietHoursSheet(onDismissRequest = { showQuietHoursSheet = false })
+    }
+}
+
+/**
+ * Dismissible soft update banner — shown when [UpdateStatus.UpdateAvailable] is current.
+ *
+ * Session-scoped dismissal only: the banner reappears after the next app restart.
+ * It is never full-screen and never blocks navigation.
+ */
+@Composable
+private fun SoftUpdateBanner(
+    info: VersionInfo,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = AderaShapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Rounded.SystemUpdate,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Update available",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                if (info.releaseNotes.isNotBlank()) {
+                    Text(
+                        info.releaseNotes,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            TextButton(onClick = {
+                context.startActivity(
+                    Intent(android.content.Intent.ACTION_VIEW, Uri.parse(info.downloadUrl))
+                )
+            }) {
+                Text(
+                    "Download",
+                    color = MaterialTheme.colorScheme.secondary,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    Icons.Rounded.Close,
+                    contentDescription = "Dismiss update banner",
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
     }
 }

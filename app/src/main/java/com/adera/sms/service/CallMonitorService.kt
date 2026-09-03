@@ -11,11 +11,7 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Bundle
-import android.database.ContentObserver
-import android.net.Uri
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
 import android.provider.CallLog
 import android.telephony.PhoneStateListener
 import android.telephony.SubscriptionManager
@@ -40,12 +36,10 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import java.security.MessageDigest
 import java.util.Calendar
 import java.util.concurrent.Executors
-import kotlin.coroutines.resume
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.inappmessaging.FirebaseInAppMessaging
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
@@ -350,13 +344,13 @@ class CallMonitorService : Service() {
 
         // Step 1: resolve caller number
         val callerNumber = directNumber
-            ?: withTimeoutOrNull(5_000L) {
+            ?: withTimeoutOrNull(15_000L) {
                 crashlytics.log("Querying call log for missed number (TelephonyCallback path)")
                 queryCallLogForMissedNumber()
             }
             ?: run {
-                crashlytics.log("processMissedCall: call log not updated within 5 s — skipping")
-                Log.w(TAG, "processMissedCall: call log not updated within 5 s — skipping auto-reply")
+                crashlytics.log("processMissedCall: call log not updated within 15 s — skipping")
+                Log.w(TAG, "processMissedCall: call log not updated within 15 s — skipping auto-reply")
                 return
             }
 
@@ -441,95 +435,87 @@ class CallMonitorService : Service() {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     /**
-     * Used on API 31+ where TelephonyCallback doesn't provide the caller number directly.
+     * Polls the system call log until a new missed call entry appears, returning its number.
      *
-     * IMPORTANT — LIMIT in sortOrder:
-     *   Appending "LIMIT n" directly in the sortOrder string of ContentResolver.query() throws
-     *   IllegalArgumentException: Invalid token LIMIT on Android 11+ (API 30+). The fix is to
-     *   use the Bundle-based query overload (API 30+) which accepts QUERY_ARG_LIMIT separately.
-     *   The legacy sortOrder string with LIMIT is only used on API < 30 where it is valid.
+     * POLLING APPROACH (replaces ContentObserver):
+     *   The previous ContentObserver-based implementation silently failed on OEM builds
+     *   (Tecno / Infinix / Itel) where observer delivery can be delayed independently of
+     *   the actual call-log write. Active polling at 500 ms intervals is simpler, more
+     *   predictable, and still prompt enough for this use case.
+     *
+     *   Bounded by the withTimeoutOrNull(15_000L) in the caller — at most 30 polls.
+     *
+     * TIMESTAMP FILTER:
+     *   Only considers missed calls written within the last 30 seconds. This prevents
+     *   a stale earlier entry already in the log from being returned immediately.
      */
-    private suspend fun queryCallLogForMissedNumber(): String? = suspendCancellableCoroutine { cont ->
+    private suspend fun queryCallLogForMissedNumber(): String? {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CALL_LOG)
             != PackageManager.PERMISSION_GRANTED) {
             Log.e(TAG, "READ_CALL_LOG not granted — cannot fetch caller number")
-            cont.resume(null)
-            return@suspendCancellableCoroutine
+            return null
         }
-        
-        val resolver = contentResolver
-        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
-            override fun onChange(selfChange: Boolean, uri: Uri?) {
-                try {
-                    resolver.unregisterContentObserver(this)
-                } catch (e: Exception) {}
-
-                try {
-                    val cursor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        // API 30+: Bundle-based query — LIMIT in sortOrder is rejected by
-                        // the platform on API 30+ with IllegalArgumentException.
-                        val args = Bundle().apply {
-                            putInt(ContentResolver.QUERY_ARG_LIMIT, 1)
-                            putStringArray(
-                                ContentResolver.QUERY_ARG_SORT_COLUMNS,
-                                arrayOf(CallLog.Calls.DATE)
-                            )
-                            putInt(
-                                ContentResolver.QUERY_ARG_SORT_DIRECTION,
-                                ContentResolver.QUERY_SORT_DIRECTION_DESCENDING
-                            )
-                            putString(
-                                ContentResolver.QUERY_ARG_SQL_SELECTION,
-                                "${CallLog.Calls.TYPE} = ?"
-                            )
-                            putStringArray(
-                                ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,
-                                arrayOf(CallLog.Calls.MISSED_TYPE.toString())
-                            )
-                        }
-                        resolver.query(
-                            CallLog.Calls.CONTENT_URI,
-                            arrayOf(CallLog.Calls.NUMBER),
-                            args,
-                            null  // CancellationSignal
-                        )
-                    } else {
-                        // API < 30: legacy sortOrder string — LIMIT is accepted here.
-                        resolver.query(
-                            CallLog.Calls.CONTENT_URI,
-                            arrayOf(CallLog.Calls.NUMBER),
-                            "${CallLog.Calls.TYPE} = ?",
-                            arrayOf(CallLog.Calls.MISSED_TYPE.toString()),
-                            "${CallLog.Calls.DATE} DESC LIMIT 1"
-                        )
-                    }
-                    cursor?.use {
-                        if (it.moveToFirst()) {
-                            if (cont.isActive) cont.resume(it.getString(0))
-                        } else {
-                            if (cont.isActive) cont.resume(null)
-                        }
-                    } ?: run {
-                        if (cont.isActive) cont.resume(null)
-                    }
-                } catch (e: SecurityException) {
-                    Log.e(TAG, "SecurityException querying call log", e)
-                    if (cont.isActive) cont.resume(null)
-                } catch (e: Exception) {
-                    // Catch-all: ensures no uncaught exception can propagate out of the
-                    // ContentObserver callback and silently kill the coroutine.
-                    Log.e(TAG, "Exception querying call log", e)
-                    if (cont.isActive) cont.resume(null)
-                }
+        val windowStart = System.currentTimeMillis() - 30_000L
+        while (true) {
+            val number = readLatestMissedCallNumber(windowStart)
+            if (number != null) {
+                Log.d(TAG, "Call log entry found via poll")
+                return number
             }
+            delay(500L)
         }
-        
-        resolver.registerContentObserver(CallLog.Calls.CONTENT_URI, true, observer)
-        
-        cont.invokeOnCancellation {
-            try {
-                resolver.unregisterContentObserver(observer)
-            } catch (e: Exception) {}
+    }
+
+    /**
+     * Single synchronous call-log query: returns the most recent missed call number
+     * with [CallLog.Calls.DATE] >= [since], or null if none exists yet.
+     *
+     * IMPORTANT — LIMIT in sortOrder:
+     *   Appending "LIMIT n" directly in the sortOrder string throws
+     *   IllegalArgumentException on Android 11+ (API 30+). The Bundle-based
+     *   query overload (API 30+) accepts QUERY_ARG_LIMIT separately.
+     */
+    private fun readLatestMissedCallNumber(since: Long): String? {
+        return try {
+            val projection = arrayOf(CallLog.Calls.NUMBER)
+            val cursor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val args = Bundle().apply {
+                    putInt(ContentResolver.QUERY_ARG_LIMIT, 1)
+                    putStringArray(
+                        ContentResolver.QUERY_ARG_SORT_COLUMNS,
+                        arrayOf(CallLog.Calls.DATE)
+                    )
+                    putInt(
+                        ContentResolver.QUERY_ARG_SORT_DIRECTION,
+                        ContentResolver.QUERY_SORT_DIRECTION_DESCENDING
+                    )
+                    putString(
+                        ContentResolver.QUERY_ARG_SQL_SELECTION,
+                        "${CallLog.Calls.TYPE} = ? AND ${CallLog.Calls.DATE} >= ?"
+                    )
+                    putStringArray(
+                        ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,
+                        arrayOf(CallLog.Calls.MISSED_TYPE.toString(), since.toString())
+                    )
+                }
+                contentResolver.query(CallLog.Calls.CONTENT_URI, projection, args, null)
+            } else {
+                // API < 30: LIMIT in sortOrder is valid here.
+                contentResolver.query(
+                    CallLog.Calls.CONTENT_URI,
+                    projection,
+                    "${CallLog.Calls.TYPE} = ? AND ${CallLog.Calls.DATE} >= ?",
+                    arrayOf(CallLog.Calls.MISSED_TYPE.toString(), since.toString()),
+                    "${CallLog.Calls.DATE} DESC LIMIT 1"
+                )
+            }
+            cursor?.use { if (it.moveToFirst()) it.getString(0) else null }
+        } catch (e: SecurityException) {
+            Log.e(TAG, "SecurityException querying call log", e)
+            null
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception querying call log", e)
+            null
         }
     }
 
