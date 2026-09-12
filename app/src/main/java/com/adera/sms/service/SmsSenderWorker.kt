@@ -1,15 +1,18 @@
 package com.adera.sms.service
 
+import android.Manifest
 import android.app.Activity
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.os.Build
 import android.telephony.SmsManager
 import android.telephony.SubscriptionManager
 import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.work.BackoffPolicy
 import androidx.work.CoroutineWorker
 import androidx.work.OneTimeWorkRequestBuilder
@@ -97,6 +100,17 @@ class SmsSenderWorker(
         val fullMessage = templateText + SIGNATURE
 
         Log.i(TAG, "SmsSenderWorker: sending to ${callerNumber.take(3)}***, subId=$subscriptionId, attempt ${runAttemptCount + 1}")
+
+        // Explicit SEND_SMS runtime-permission check.
+        // Catching SecurityException alone is not enough — on some OEM builds (Tecno/Infinix/MIUI)
+        // attempting sendTextMessage without the permission can trigger a system-level confirmation
+        // popup instead of throwing. Fail fast here to keep sending fully automatic.
+        if (ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.SEND_SMS)
+            != PackageManager.PERMISSION_GRANTED) {
+            Log.e(TAG, "SEND_SMS permission not granted — marking FAILED immediately (no popup)")
+            if (logEntryId != -1L) db.callLogDao().updateStatus(logEntryId, CallStatus.FAILED)
+            return Result.failure()
+        }
 
         return try {
             val smsManager = resolveSmsManager(subscriptionId)

@@ -190,6 +190,18 @@ class CallMonitorService : Service() {
                 delay(300_000L) // every 5 minutes
             }
         }
+
+        // Clean up any log entries that got stuck in PENDING from a prior crash/kill.
+        // A PENDING entry older than 5 minutes means the WorkManager worker never completed.
+        serviceScope.launch {
+            try {
+                val cutoff = System.currentTimeMillis() - 5 * 60 * 1000L
+                val fixed = database.callLogDao().markStuckPendingAsFailed(cutoff)
+                if (fixed > 0) Log.i(TAG, "Cleaned up $fixed stuck PENDING log entries → FAILED")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to clean stuck PENDING entries", e)
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int =
@@ -355,6 +367,13 @@ class CallMonitorService : Service() {
             }
 
         crashlytics.log("Caller number resolved. Checking settings...")
+
+        // Step 1b: reject short-codes and invalid numbers — silently discard, no log, no SMS
+        if (!isValidReplyTarget(callerNumber)) {
+            crashlytics.log("Skipping — short-code or invalid number: ${callerNumber.take(5)}")
+            Log.i(TAG, "Skipping auto-reply — short-code/invalid number: ${callerNumber.take(4)}…")
+            return
+        }
 
         val settings = database.settingsDao().getSettings() ?: run {
             crashlytics.log("Settings not found in DB — skipping")
@@ -550,6 +569,20 @@ class CallMonitorService : Service() {
         MessageDigest.getInstance("SHA-256")
             .digest(input.toByteArray())
             .joinToString("") { "%02x".format(it) }
+
+    /**
+     * Returns true if [number] is a real phone number that we should reply to.
+     *
+     * Rejects short-codes and any string with fewer than 7 digit characters.
+     *   - Ethiopian E.164:  +251XXXXXXXXX  → 12 chars, 11 digits after stripping '+'
+     *   - Ethiopian local:  09XXXXXXXX / 07XXXXXXXX  → 10 digits
+     *   - International:    any number with 7+ digits is accepted (diaspora callers)
+     *   - Short-codes:      3–5 digits (e.g. 700, 900, 8000) → rejected
+     */
+    private fun isValidReplyTarget(number: String): Boolean {
+        val digits = number.filter { it.isDigit() }
+        return digits.length >= 7
+    }
 
     private fun telephonyManager(subId: Int): TelephonyManager {
         val base = getSystemService(TelephonyManager::class.java)

@@ -481,12 +481,12 @@ private fun LogEntryCard(
 @Composable
 private fun StatusChip(status: CallStatus) {
     val (label, bg, contentColor) = when (status) {
-        CallStatus.SENT                   -> Triple("Sent",      MaterialTheme.colorScheme.primaryContainer,   MaterialTheme.colorScheme.onPrimaryContainer)
-        CallStatus.FAILED                 -> Triple("Failed",    MaterialTheme.colorScheme.errorContainer,     MaterialTheme.colorScheme.onErrorContainer)
-        CallStatus.SUPPRESSED_QUIET_HOURS -> Triple("Quiet hrs", MaterialTheme.colorScheme.surface,            MaterialTheme.colorScheme.onSurfaceVariant)
-        CallStatus.SUPPRESSED_COOLDOWN    -> Triple("Cooldown",  MaterialTheme.colorScheme.surface,            MaterialTheme.colorScheme.onSurfaceVariant)
-        CallStatus.PENDING                -> Triple("Pending",   MaterialTheme.colorScheme.surface,            MaterialTheme.colorScheme.onSurfaceVariant)
-        CallStatus.DAILY_LIMIT_REACHED    -> Triple("Limit Reached", MaterialTheme.colorScheme.surface,        MaterialTheme.colorScheme.onSurfaceVariant)
+        CallStatus.SENT                   -> Triple("Sent",          MaterialTheme.colorScheme.primaryContainer,   MaterialTheme.colorScheme.onPrimaryContainer)
+        CallStatus.FAILED                 -> Triple("Failed",        MaterialTheme.colorScheme.errorContainer,     MaterialTheme.colorScheme.onErrorContainer)
+        CallStatus.SUPPRESSED_QUIET_HOURS -> Triple("Quiet hrs",     MaterialTheme.colorScheme.surface,            MaterialTheme.colorScheme.onSurfaceVariant)
+        CallStatus.SUPPRESSED_COOLDOWN    -> Triple("Cooldown",      MaterialTheme.colorScheme.surface,            MaterialTheme.colorScheme.onSurfaceVariant)
+        CallStatus.PENDING                -> Triple("Pending",       MaterialTheme.colorScheme.surface,            MaterialTheme.colorScheme.onSurfaceVariant)
+        CallStatus.DAILY_LIMIT_REACHED    -> Triple("Limit Reached", MaterialTheme.colorScheme.surface,            MaterialTheme.colorScheme.onSurfaceVariant)
     }
 
     Surface(

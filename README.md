@@ -3,9 +3,8 @@
 <img src="https://img.shields.io/badge/Platform-Android%208.0%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white"/>
 <img src="https://img.shields.io/badge/Language-Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white"/>
 <img src="https://img.shields.io/github/actions/workflow/status/miftah-ab/adera-sms/build.yml?style=for-the-badge&label=CI%20Build&logo=github-actions&logoColor=white"/>
-<img src="https://img.shields.io/badge/Version-1.0.0-F9A825?style=for-the-badge"/>
+<img src="https://img.shields.io/badge/Version-1.0.3-F9A825?style=for-the-badge"/>
 <img src="https://img.shields.io/badge/License-MIT-2E7D32?style=for-the-badge"/>
-<img src="https://img.shields.io/badge/No%20Ads-No%20Tracking-1B5E20?style=for-the-badge"/>
 
 <br/><br/>
 
@@ -49,36 +48,41 @@ Unlike global competitors (Smarter, Auto Message), Adera SMS is built for:
 
 | Reality | Adera SMS approach |
 |---|---|
-| Dual-SIM devices (Tecno, Infinix, Itel) | Per-SIM listener, 3-level SIM fallback chain |
-| Aggressive OEM battery killers | Foreground service + battery whitelist guided setup |
-| Offline-first / no reliable internet | 100% local — no server, no cloud sync |
-| Sideload distribution (no Play Store) | GitHub Releases + in-app update checker |
-| Amharic + English UI | Full Ethiopic font support, 5 presets in each language |
-| Low-end hardware | Dark mode, system font, minimal memory footprint |
+| Dual-SIM devices (Tecno, Infinix, Itel) | Per-SIM listener registered per subscription ID; strict SIM matching on send |
+| Aggressive OEM battery killers | Foreground service + battery exemption guided setup on Home screen |
+| Offline-first / no reliable internet | Core auto-reply loop has zero network dependencies |
+| Sideload distribution (no Play Store) | GitHub Releases + in-app update checker (Vercel-hosted version.json) |
+| Amharic + English | 3 English + 3 Amharic preset templates shipped out of the box |
+| Short-code calls (700, 8000 etc.) | Automatically filtered — no SMS sent to carrier short-codes |
+| Low-end hardware | Material 3 dark theme, system font, minimal memory footprint |
 
 ---
 
 ## ✨ Features
 
-### Core (v1.0)
+### Core (v1.0.3)
 
-- **🔁 Automatic SMS Reply** — Sends a customizable message the moment a call is missed
-- **📱 Dual-SIM Aware** — Detects which SIM received the missed call and sends from it
-- **⏰ Quiet Hours** — Configurable do-not-reply window (supports overnight ranges, e.g. 23:00–06:00)
-- **🔄 10-Minute Cooldown** — Suppresses duplicate replies to the same caller within 10 minutes
-- **📋 Template Library** — 5 English + 5 Amharic presets; unlimited custom templates
-- **📊 Activity Log** — Full masked history with status chips (Sent / Failed / Quiet Hours / Cooldown)
-- **🔒 Privacy-First** — Phone numbers stored only as SHA-256 hashes; full number never written to disk
-- **🔋 Battery Survival** — OEM-specific battery guide (Tecno, Infinix, Samsung, Xiaomi, Huawei, Oppo)
-- **⬆ In-App Updates** — Checks GitHub Pages endpoint for new versions; forced update if below minimum
-- **🌐 Works Offline** — Core auto-reply loop has zero network dependencies
+- **🔁 Automatic SMS Reply** — Sends a customizable message the moment a call is missed; no popup, no confirmation
+- **📱 Dual-SIM Aware** — Registers one telephony listener per active subscription ID; SMS is sent via the exact SIM that received the missed call
+- **🚫 Short-Code Filter** — Calls from carrier short-codes (< 7 digits) are silently ignored — no SMS attempt, nothing logged
+- **⏰ Quiet Hours** — Configurable do-not-reply window stored as minutes-since-midnight; supports overnight wrap-around (e.g. 23:00–06:00)
+- **🔄 10-Minute Cooldown** — Suppresses duplicate replies to the same caller within 10 minutes, keyed by SHA-256 hash of the number
+- **📋 Template Library** — 3 English + 3 Amharic presets; up to 6 custom templates on the free tier (adjustable via Firebase Remote Config)
+- **📊 Recents Log** — Full history with status chips: Sent · Failed · Quiet hrs · Cooldown · Pending · Limit Reached. Grouped by date, searchable by number, shows contact name if READ_CONTACTS is granted
+- **🔒 Privacy-First** — Full phone numbers stored locally in SQLite; SHA-256 hash used for cooldown lookups only; no data ever leaves the device
+- **🔋 Battery Survival** — `START_STICKY` foreground service + Android 14+ WorkManager expedited boot restart; Home screen guides battery exemption
+- **⬆ In-App Updates** — Checks `adera-sms.vercel.app/downloads/version.json` on launch; shows soft banner for optional updates, full-screen blocking screen for forced updates; `disableCoreService` emergency kill-switch in JSON
+- **📤 Share APK** — Send the APK to another device via Xender, SHAREit, or Bluetooth directly from Settings
+- **📞 Contact Names** — Optional READ_CONTACTS permission resolves caller numbers to contact names in Recents and Home screen
+- **🔥 Firebase Integration** — Crashlytics, Performance Monitoring, Analytics, Remote Config (daily cap + template limit), In-App Messaging (Pro upsell prompts), FCM (push notifications)
+- **🌐 Works Offline** — Core auto-reply loop requires zero network. Firebase features degrade gracefully if offline.
 
 ### Planned (v1.1+)
 
-- Per-contact custom rules
+- Per-contact custom reply rules
 - Activity log export (CSV)
-- SMS read confirmation (delivery report)
-- Widget for home-screen quick toggle
+- SMS delivery report (read confirmation)
+- Home screen widget for quick toggle
 - WhatsApp Business fallback integration
 
 ---
@@ -87,9 +91,9 @@ Unlike global competitors (Smarter, Auto Message), Adera SMS is built for:
 
 > *(Install the APK on a physical device and screenshots will be added here)*
 
-| Onboarding | Home | Templates | Activity Log | Settings |
+| Onboarding | Home | Templates | Recents | Settings |
 |---|---|---|---|---|
-| 3-slide intro + permission primer | Master toggle + active template | English & Amharic presets | Masked numbers + status chips | OEM battery guide + update check |
+| Consent gate + Privacy Policy + Terms of Service | Master toggle + active template + recent activity | English & Amharic presets + custom editor | Date-grouped log, search, filter chips, contact names | Quiet hours, share APK, clear data, update check |
 
 ---
 
@@ -97,53 +101,63 @@ Unlike global competitors (Smarter, Auto Message), Adera SMS is built for:
 
 ```
 adera-sms/
-├── .github/workflows/build.yml       # CI/CD — debug on push, release APK on tag
+├── .github/workflows/build.yml           # CI/CD — debug on push, signed release APK on tag
 ├── app/
+│   ├── build.gradle.kts                  # compileSdk=36, minSdk=26, versionCode=4 (1.0.3)
+│   ├── google-services.json              # Firebase project config
 │   └── src/main/
 │       ├── AndroidManifest.xml
-│       ├── java/com/adera/sms/
-│       │   ├── AderaSmsApplication.kt     # App init: channels + DB seed
-│       │   ├── MainActivity.kt            # Single activity, NavHost
-│       │   ├── data/
-│       │   │   ├── entity/                # Room entities (MessageTemplate, CallLogEntry, AppSettings)
-│       │   │   ├── dao/                   # TemplateDao, CallLogDao, SettingsDao
-│       │   │   └── AppDatabase.kt         # Room database singleton
-│       │   ├── service/
-│       │   │   ├── CallMonitorService.kt  # Foreground service, telephony listener
-│       │   │   └── SmsSenderWorker.kt     # WorkManager worker, retry, SIM selection
-│       │   ├── receiver/
-│       │   │   └── BootReceiver.kt        # Restart service after reboot
-│       │   ├── update/
-│       │   │   └── UpdateChecker.kt       # HTTP fetch version.json, forced update logic
-│       │   ├── analytics/
-│       │   │   └── AnalyticsManager.kt    # Opt-in stub (Firebase-ready)
-│       │   └── ui/
-│       │       ├── theme/                 # Color, Type, Theme (Material 3 dark)
-│       │       ├── navigation/            # Screen sealed class, NavGraph
-│       │       ├── onboarding/            # 3-slide intro + permission explainer
-│       │       ├── home/                  # HomeScreen + HomeViewModel
-│       │       ├── templates/             # TemplateEditorScreen + TemplateViewModel
-│       │       ├── activitylog/           # ActivityLogScreen + ActivityLogViewModel
-│       │       ├── settings/              # SettingsScreen, QuietHoursScreen, SettingsViewModel
-│       │       └── update/                # ForceUpdateScreen (blocking)
-│       └── res/
-│           ├── values/                    # strings.xml, colors.xml, themes.xml
-│           └── values-am/                 # Amharic strings (verified by native speaker needed)
-└── update-endpoint/version.json          # Host on GitHub Pages for update checks
+│       └── java/com/adera/sms/
+│           ├── AderaSmsApplication.kt    # Notification channels, DB seed (3+3 presets), Remote Config init
+│           ├── MainActivity.kt           # Single activity; reads consentGiven → routes to Onboarding or Main
+│           ├── analytics/
+│           │   └── AnalyticsManager.kt   # Firebase Analytics wrapper (app_open, autoreply_sent, etc.)
+│           ├── data/
+│           │   ├── AppDatabase.kt        # Room singleton, schema v4, migrations 1→2→3→4
+│           │   ├── Converters.kt         # CallStatus enum ↔ String type converter
+│           │   ├── entity/
+│           │   │   ├── AppSettings.kt    # Single-row settings (autoReply, quietHours, consent, heartbeat)
+│           │   │   ├── CallLogEntry.kt   # Log row: callerNumber, hash, timestamp, simSlot, status
+│           │   │   └── MessageTemplate.kt
+│           │   └── dao/
+│           │       ├── CallLogDao.kt     # CRUD + cooldown query + stuck-PENDING cleanup
+│           │       ├── SettingsDao.kt    # observe/get/upsert, setAutoReplyEnabled, setQuietHours
+│           │       └── TemplateDao.kt
+│           ├── receiver/
+│           │   └── BootReceiver.kt       # BOOT_COMPLETED + LOCKED_BOOT → schedules ServiceStartWorker
+│           ├── service/
+│           │   ├── AderaFirebaseMessagingService.kt  # FCM token + push notification display
+│           │   ├── CallMonitorService.kt # Foreground service; TelephonyCallback (API31+) / PhoneStateListener (API26-30)
+│           │   ├── ServiceStartWorker.kt # WorkManager expedited worker — starts CallMonitorService safely on Android 14+
+│           │   └── SmsSenderWorker.kt    # Sends SMS via exact SIM, 1 retry, updates log SENT/FAILED
+│           ├── update/
+│           │   └── UpdateChecker.kt      # Fetches version.json from Vercel, returns UpdateStatus
+│           └── ui/
+│               ├── home/                 # HomeScreen + HomeViewModel (toggle, permissions, update status)
+│               ├── templates/            # TemplateEditorScreen + TemplateViewModel (RC limit enforcement)
+│               ├── activitylog/          # ActivityLogScreen (Recents) + ActivityLogViewModel
+│               ├── settings/             # SettingsScreen, QuietHoursSheet, SettingsViewModel
+│               ├── onboarding/           # OnboardingScreen (consent gate, Privacy Policy, Terms of Service)
+│               ├── navigation/           # AderaNavGraph, Screen sealed class
+│               ├── theme/                # Material 3 dark theme — Color, Type, Shape
+│               └── update/               # ForceUpdateScreen (clears back stack, blocks navigation)
+└── update-endpoint/
+    └── version.json                      # Served from Vercel — source of truth for update checks
 ```
 
-### Technology Choices
+### Technology Stack
 
 | Layer | Technology | Why |
 |---|---|---|
 | Language | Kotlin | Official Android language |
-| UI | Jetpack Compose + Material 3 | Modern, dark-mode-first, declarative |
-| Database | Room (SQLite) | Fully offline, zero backend |
-| Background Work | WorkManager | Survives process kill, retry built-in |
-| Call Detection | TelephonyCallback (API 31+) + PhoneStateListener (API 26–30) | Covers all target device OS versions |
+| UI | Jetpack Compose + Material 3 | Declarative, dark-mode-first |
+| Database | Room (SQLite) v4 | Fully offline, zero backend |
+| Background Work | WorkManager | Survives process kill; retry built-in |
+| Call Detection | TelephonyCallback (API 31+) + PhoneStateListener (API 26–30) | Covers all target OS versions; dedicated executor (not mainExecutor) for Android 15 reliability |
 | Navigation | Compose NavHost | Single-activity, type-safe routes |
-| HTTP | HttpURLConnection + JSONObject | No Retrofit needed for a single endpoint |
-| CI/CD | GitHub Actions | Free, reproducible, tag-triggered releases |
+| HTTP | HttpURLConnection + JSONObject | No Retrofit needed for one endpoint |
+| Firebase | Analytics · Crashlytics · Performance · Remote Config · In-App Messaging · FCM | Observability, remote kill-switch, Pro upsell |
+| CI/CD | GitHub Actions | Free, reproducible, tag-triggered signed releases |
 
 ### Call State Machine
 
@@ -151,21 +165,36 @@ adera-sms/
 Phone rings
      │
      ▼
- RINGING ──────────────────────── IDLE  ←── Missed call detected
-     │                                           │
-     ▼                                           ▼
- OFFHOOK ──────────────────────── IDLE       Check gates:
-  (answered)                                  1. autoReplyEnabled?
-                                              2. Not in quiet hours?
-                                              3. Not in 10-min cooldown?
-                                                    │
-                                                    ▼
-                                         Enqueue SmsSenderWorker
-                                         Write PENDING log entry
-                                                    │
-                                              Send SMS via SIM
-                                         Update log → SENT / FAILED
+ RINGING ─────────────────────── IDLE  ←── Missed call detected
+     │                                          │
+     ▼                                          ▼
+ OFFHOOK ─────────────────────── IDLE      Gate 1: valid phone number? (≥7 digits)
+  (answered — no reply)                    Gate 2: autoReplyEnabled?
+                                           Gate 3: not in quiet hours?
+                                           Gate 4: not in 10-min cooldown?
+                                           Gate 5: below daily send cap? (default: 15/24h)
+                                           Gate 6: default template exists?
+                                                │
+                                                ▼
+                                     Insert PENDING log entry
+                                     Enqueue SmsSenderWorker
+                                                │
+                                    Check SEND_SMS permission
+                                    Send via exact SIM (subscriptionId)
+                                    Append "\n\nBy Adera SMS" signature
+                                                │
+                                     Update log → SENT / FAILED
 ```
+
+### Database Schema (v4)
+
+| Table | Key columns |
+|---|---|
+| `app_settings` | `autoReplyEnabled`, `quietHoursStart/End` (min since midnight), `consentGiven`, `consentTimestamp`, `lastServiceHeartbeat` |
+| `call_log_entries` | `callerNumber`, `callerNumberHash` (SHA-256), `timestamp`, `simSlot` (subscriptionId), `status` |
+| `message_templates` | `text`, `language`, `isDefault`, `isPreset` |
+
+**Call statuses:** `PENDING` · `SENT` · `FAILED` · `SUPPRESSED_QUIET_HOURS` · `SUPPRESSED_COOLDOWN` · `DAILY_LIMIT_REACHED`
 
 ---
 
@@ -177,7 +206,7 @@ Phone rings
 2. Download `app-release.apk`
 3. On your Android phone: **Settings → Security → Install unknown apps** → allow your browser or Files app
 4. Open the downloaded APK and tap **Install**
-5. Grant the 3 requested permissions (explained in the onboarding screen)
+5. Accept the consent screen, then grant the 3 core permissions
 
 **Minimum Android:** 8.0 Oreo (API 26)  
 **Tested on:** Tecno Spark, Infinix Hot, Samsung Galaxy A-series, Xiaomi Redmi
@@ -192,7 +221,7 @@ Phone rings
 |---|---|
 | Android Studio | Hedgehog 2023.1.1+ |
 | JDK | 17 (Temurin recommended) |
-| Android SDK | API 34 (compile), API 26 (min) |
+| Android SDK | API 36 (compile), API 26 (min) |
 
 #### Steps
 
@@ -201,13 +230,10 @@ Phone rings
 git clone https://github.com/miftah-ab/adera-sms.git
 cd adera-sms
 
-# 2. Generate the Gradle wrapper JAR (required once — not committed to git)
-gradle wrapper --gradle-version 8.6
-
-# 3. Open in Android Studio, or build from CLI:
+# 2. Open in Android Studio, or build from CLI:
 ./gradlew assembleDebug
 
-# 4. Install on a connected physical device (no emulator support for telephony)
+# 3. Install on a connected physical device (telephony does not work on emulators)
 ./gradlew installDebug
 ```
 
@@ -242,7 +268,7 @@ certutil -encode keystore.jks keystore.b64
 # Copy the contents of keystore.b64 (excluding header/footer lines)
 ```
 
-Then add these **4 GitHub Actions secrets** under  
+Add these **4 GitHub Actions secrets** under  
 `Repository → Settings → Secrets and variables → Actions → New repository secret`:
 
 | Secret name | Value |
@@ -255,14 +281,15 @@ Then add these **4 GitHub Actions secrets** under
 #### Publishing a release
 
 ```bash
-# Bump versionCode and versionName in app/build.gradle.kts, then:
+# 1. Bump versionCode and versionName in app/build.gradle.kts
+# 2. Tag and push:
 git tag v1.1.0
 git push origin v1.1.0
 # → CI builds, signs, and creates the GitHub Release automatically
-```
 
-After each release, update `update-endpoint/version.json` with the new `versionCode`  
-and push to GitHub Pages so existing users get the in-app update notification.
+# 3. Update update-endpoint/version.json with the new versionCode and re-deploy to Vercel
+#    so existing users receive the in-app update notification
+```
 
 ---
 
@@ -270,46 +297,66 @@ and push to GitHub Pages so existing users get the in-app update notification.
 
 ### Quiet Hours
 
-Navigate to **Settings → Quiet Hours**. Set a start and end time.  
-Both same-day (e.g. 08:00–20:00) and overnight (e.g. 23:00–06:00) ranges are supported.  
-Set start = end = 00:00 to disable.
+Navigate to **Home → Quiet Hours** or **Settings → Quiet Hours**.  
+Set a start and end time. Both same-day (e.g. 08:00–20:00) and overnight (e.g. 23:00–06:00) ranges are supported.  
+Set start = end to disable (default is both = 0, disabled).
 
 ### Templates
 
-Navigate to **Templates** from the Home screen.  
-Select from 5 English or 5 Amharic presets, or tap **+** to write a custom message.  
-Messages over 160 characters will be split into multiple SMS segments.
+Navigate to the **Templates** tab from the main screen.  
+Select from 3 English or 3 Amharic presets, or tap **+** to write a custom message.  
+The free tier allows up to **6 custom templates** (adjustable via Firebase Remote Config key `free_template_limit`).  
+Messages over 160 characters will be sent as multi-part SMS.
 
 ### Update Endpoint
 
-Host `update-endpoint/version.json` on GitHub Pages and update `UpdateChecker.VERSION_ENDPOINT` in  
-[`UpdateChecker.kt`](app/src/main/java/com/adera/sms/update/UpdateChecker.kt).
+The update endpoint is hosted on Vercel:
+
+```
+https://adera-sms.vercel.app/downloads/version.json
+```
+
+Shape of `version.json`:
 
 ```json
 {
-  "latestVersionCode": 2,
+  "latestVersionCode": 4,
   "minSupportedVersionCode": 1,
   "downloadUrl": "https://github.com/miftah-ab/adera-sms/releases/latest/download/app-release.apk",
-  "releaseNotes": "Bug fixes and Tecno battery improvements",
+  "releaseNotes": "Short-code filtering, stuck PENDING fix, explicit SMS permission guard",
   "disableCoreService": false
 }
 ```
+
+- **`latestVersionCode`** — shows a soft update banner to users below this
+- **`minSupportedVersionCode`** — shows a full-screen blocking update to users below this
+- **`disableCoreService`** — emergency kill-switch: set to `true` to stop the auto-reply service on all installed devices remotely *(currently parsed but not yet wired — see known issues)*
+
+### Firebase Remote Config Keys
+
+| Key | Default | Effect |
+|---|---|---|
+| `daily_send_cap` | `15` | Max auto-replies per 24-hour window |
+| `free_template_limit` | `6` | Max custom (non-preset) templates on free tier |
 
 ---
 
 ## 🔒 Privacy & Data Policy
 
-Adera SMS is **100% offline** for its core function. Here is exactly what data is and is not stored:
-
-| Data | Stored | Where | Why |
+| Data | Stored | Where | Notes |
 |---|---|---|---|
-| Full phone number | ✅ Yes | Local SQLite only | Displayed in full in Activity Log and Home screen |
-| SHA-256 hash of full number | ✅ Yes | Local SQLite only | Per-number 10-minute cooldown logic |
+| Full phone number | ✅ Yes | Local SQLite only | Displayed in Recents and Home screen |
+| SHA-256 hash of full number | ✅ Yes | Local SQLite only | Used only for 10-minute cooldown logic — never displayed |
 | SMS template text | ✅ Yes | Local SQLite only | User-configured |
-| Settings (toggle, quiet hours) | ✅ Yes | Local SQLite only | App configuration |
-| Analytics events | Optional | None (stub in v1) | Opt-in only; no data sent anywhere in v1 |
+| Settings (toggle, quiet hours, consent) | ✅ Yes | Local SQLite only | `consentGiven` + `consentTimestamp` stored on acceptance |
+| Analytics events | ✅ Yes | Firebase Analytics | Behavioral signals only: `app_open`, `autoreply_sent`, `toggle_changed`, `template_edited`. **No phone numbers. No message content.** |
+| Crash reports | ✅ Yes | Firebase Crashlytics | Stack traces + device context keys (Android version, SIM count). No personal data. |
+| Performance traces | ✅ Yes | Firebase Performance | Automatic traces only |
+| FCM token | In memory | Firebase | Logged locally; not sent to any backend |
 
-**No data ever leaves the device.** No backend server. No cloud sync. No third-party SDKs that phone home.
+**The core auto-reply loop requires zero network.** Firebase features (analytics, Crashlytics, Remote Config, FCM) are the only network activity, and they degrade gracefully when offline.
+
+The full Privacy Policy and Terms of Service are bundled in the app assets and shown on first launch.
 
 ---
 
@@ -317,10 +364,10 @@ Adera SMS is **100% offline** for its core function. Here is exactly what data i
 
 | Version | Milestone | Status |
 |---|---|---|
-| **v1.0** | Core loop + onboarding + template editor + activity log + quiet hours + update checker | ✅ Complete |
-| **v1.1** | Per-contact rules · Log export (CSV) · Delivery reports | 🔜 Planned |
-| **v1.2** | Home screen widget · WhatsApp fallback intent | 🔜 Planned |
-| **v2.0** | Firebase Crashlytics · Optional contact name display · Scheduled replies | 🔜 Planned |
+| **v1.0** | Core loop · onboarding consent gate · template editor · Recents log · quiet hours · update checker | ✅ Complete |
+| **v1.0.3** | Short-code filtering · stuck PENDING cleanup · explicit SEND_SMS permission guard · Firebase (Analytics, Crashlytics, Perf, Remote Config, FCM, In-App Messaging) | ✅ Complete |
+| **v1.1** | Wire `disableCoreService` kill-switch · analytics opt-out toggle · per-contact rules · log export (CSV) | 🔜 Planned |
+| **v1.2** | Home screen widget · WhatsApp fallback intent · delivery reports | 🔜 Planned |
 
 ---
 
@@ -328,24 +375,25 @@ Adera SMS is **100% offline** for its core function. Here is exactly what data i
 
 Contributions are welcome — especially:
 
-- **Amharic translation review** — the current Amharic templates need verification by a native speaker
-- **Bug reports** on Tecno / Infinix / Itel devices (OEM-specific battery and SIM issues)
+- **Amharic translation review** — preset templates need verification by a native speaker
+- **OEM-specific bug reports** on Tecno / Infinix / Itel devices (battery and SIM edge cases)
 - **New language presets** (Oromo, Tigrinya, Somali) for a future release
 
 ### Contribution process
 
 ```bash
 # 1. Fork the repo and create a branch
-git checkout -b feature/your-feature-name
+git checkout -b fix/your-fix-name
 
 # 2. Build and test on a physical device
-./gradlew assembleDebug && adb install app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleDebug
+adb install app/build/outputs/apk/debug/app-debug.apk
 
 # 3. Open a pull request — CI will build automatically
 ```
 
-Please keep PRs focused. One feature or fix per PR.  
-Follow the existing code style (Kotlin official style guide, no Hilt, no Retrofit).
+Please keep PRs focused. One fix per PR.  
+Follow the existing code style: Kotlin official style guide, no Hilt, no Retrofit, no RxJava.
 
 ---
 
