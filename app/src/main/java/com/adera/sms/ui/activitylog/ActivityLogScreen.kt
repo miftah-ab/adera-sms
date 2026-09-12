@@ -503,7 +503,7 @@ private fun StatusChip(status: CallStatus) {
     }
 }
 
-private val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, HH:mm")
+private val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, h:mm a")
 
 private fun Long.toRelativeTime(): String {
     val diff = System.currentTimeMillis() - this
